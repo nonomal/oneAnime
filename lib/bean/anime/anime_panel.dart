@@ -1,44 +1,31 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
-import 'package:flutter_modular/flutter_modular.dart';
-import 'package:oneanime/pages/video/video_controller.dart';
 
-class BangumiPanel extends StatefulWidget {
+class BangumiPanel extends StatelessWidget {
   const BangumiPanel({
     super.key,
-    this.sheetHeight,
+    required this.title,
+    required this.episodeLength,
+    required this.currentEpisode,
+    required this.onChangeEpisode,
   });
 
-  final double? sheetHeight;
-
-  @override
-  State<BangumiPanel> createState() => _BangumiPanelState();
-}
-
-class _BangumiPanelState extends State<BangumiPanel> {
-  final ScrollController listViewScrollCtr = ScrollController();
-  final VideoController videoController = Modular.get<VideoController>();
-  void changeFucCall(int episode) async {
-    await videoController.changeEpisode(episode);
-  }
+  final String title;
+  final int episodeLength;
+  final int currentEpisode;
+  final Future<void> Function(int episode) onChangeEpisode;
 
   @override
   Widget build(BuildContext context) {
-    return Observer(builder: (context) {
-      return Column(
+    final ScrollController listViewScrollCtr = ScrollController();
+
+    return Expanded(
+      child: Column(
         children: [
-          Platform.isWindows
-              ? Column(
-                  children: [
-                    const SizedBox(height: 7),
-                    SizedBox(
-                        height: 0,
-                        child: Text(' 正在播放：${videoController.title}'))
-                  ],
-                )
+          Platform.isWindows || Platform.isLinux || Platform.isMacOS
+              ? const SizedBox(height: 7)
               : Padding(
                   padding: const EdgeInsets.only(top: 10, bottom: 6),
                   child: Row(
@@ -47,7 +34,7 @@ class _BangumiPanelState extends State<BangumiPanel> {
                       const Text('合集 '),
                       Expanded(
                         child: Text(
-                          ' 正在播放：${videoController.title}',
+                          ' 正在播放：$title',
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 12,
@@ -60,7 +47,7 @@ class _BangumiPanelState extends State<BangumiPanel> {
                         height: 34,
                         child: TextButton(
                           style: ButtonStyle(
-                            padding: MaterialStateProperty.all(EdgeInsets.zero),
+                            padding: WidgetStateProperty.all(EdgeInsets.zero),
                           ),
 
                           // Todo 展示更多
@@ -80,13 +67,10 @@ class _BangumiPanelState extends State<BangumiPanel> {
                                           runSpacing: 2,
                                           children: [
                                             for (int i = 1;
-                                                i <=
-                                                    videoController
-                                                        .token.length;
+                                                i <= episodeLength;
                                                 i++) ...<Widget>[
                                               if (i ==
-                                                  videoController
-                                                      .episode) ...<Widget>[
+                                                  currentEpisode) ...<Widget>[
                                                 FilledButton(
                                                   onPressed: () async {
                                                     SmartDialog.dismiss();
@@ -97,8 +81,7 @@ class _BangumiPanelState extends State<BangumiPanel> {
                                               ] else ...[
                                                 FilledButton.tonal(
                                                   onPressed: () async {
-                                                    videoController
-                                                        .changeEpisode(i);
+                                                    onChangeEpisode(i);
                                                     SmartDialog.dismiss();
                                                   },
                                                   child:
@@ -114,7 +97,7 @@ class _BangumiPanelState extends State<BangumiPanel> {
                             }
                           },
                           child: Text(
-                            '全${videoController.token.length}话',
+                            '全$episodeLength话',
                             style: const TextStyle(fontSize: 13),
                           ),
                         ),
@@ -122,23 +105,21 @@ class _BangumiPanelState extends State<BangumiPanel> {
                     ],
                   ),
                 ),
-          SizedBox(
-            height: Platform.isWindows
-                ? 72
-                : (MediaQuery.of(context).size.height -
-                    (MediaQuery.of(context).size.width * 9 / 16) -
-                    100),
+          Expanded(
             // width: Platform.isWindows ? 300: null,
             child: GridView.builder(
               controller: listViewScrollCtr,
               scrollDirection: Axis.vertical, // 将滚动方向改为竖直
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: Platform.isWindows ? 10 : 3,
+                crossAxisCount:
+                    Platform.isWindows || Platform.isLinux || Platform.isMacOS
+                        ? 10
+                        : 3,
                 crossAxisSpacing: 10, // 间距
                 mainAxisSpacing: 5, // 间距
                 childAspectRatio: 1.7, // 子项宽高比
               ),
-              itemCount: videoController.token.length,
+              itemCount: episodeLength,
               itemBuilder: (BuildContext context, int i) {
                 return Container(
                   // width: 150,
@@ -149,7 +130,7 @@ class _BangumiPanelState extends State<BangumiPanel> {
                     clipBehavior: Clip.hardEdge,
                     child: InkWell(
                       onTap: () {
-                        changeFucCall(i + 1);
+                        onChangeEpisode(i + 1);
                       },
                       child: Padding(
                         padding: const EdgeInsets.symmetric(
@@ -159,8 +140,7 @@ class _BangumiPanelState extends State<BangumiPanel> {
                           children: <Widget>[
                             Row(
                               children: [
-                                if (i ==
-                                    (videoController.episode - 1)) ...<Widget>[
+                                if (i == (currentEpisode - 1)) ...<Widget>[
                                   Image.asset(
                                     'assets/images/live.png',
                                     color:
@@ -173,7 +153,7 @@ class _BangumiPanelState extends State<BangumiPanel> {
                                   '第${i + 1}话',
                                   style: TextStyle(
                                       fontSize: 13,
-                                      color: i == (videoController.episode - 1)
+                                      color: i == (currentEpisode - 1)
                                           ? Theme.of(context)
                                               .colorScheme
                                               .primary
@@ -185,17 +165,6 @@ class _BangumiPanelState extends State<BangumiPanel> {
                               ],
                             ),
                             const SizedBox(height: 3),
-                            // Todo 为标题准备
-                            // Text(
-                            //   widget.videoController.longTitle!,
-                            //   maxLines: 1,
-                            //   style: TextStyle(
-                            //       fontSize: 13,
-                            //       color: i == videoController.episode
-                            //           ? Theme.of(context).colorScheme.primary
-                            //           : Theme.of(context).colorScheme.onSurface),
-                            //   overflow: TextOverflow.ellipsis,
-                            // )
                           ],
                         ),
                       ),
@@ -206,7 +175,7 @@ class _BangumiPanelState extends State<BangumiPanel> {
             ),
           )
         ],
-      );
-    });
+      ),
+    );
   }
 }

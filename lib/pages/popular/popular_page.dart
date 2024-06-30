@@ -31,8 +31,7 @@ class _PopularPageState extends State<PopularPage>
   @override
   void initState() {
     super.initState();
-    debugPrint('Popular 开始初始化');
-    if (popularController.cacheList.length == 0) {
+    if (popularController.cacheList.isEmpty) {
       debugPrint('页面列表尝试重新加载');
       popularController.getAnimeList();
     }
@@ -47,11 +46,10 @@ class _PopularPageState extends State<PopularPage>
         popularController.isLoadingMore = true;
         popularController.onLoad();
       }
-      if (Platform.isWindows) {
+      if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
         checkArrowUp();
       }
     });
-    debugPrint('Popular 监听器已添加');
   }
 
   @override
@@ -61,7 +59,6 @@ class _PopularPageState extends State<PopularPage>
       popularController.filterList('');
       popularController.scrollOffset = 0.0;
     }
-    debugPrint('popular 模块已卸载, 监听器移除');
     super.dispose();
   }
 
@@ -100,9 +97,7 @@ class _PopularPageState extends State<PopularPage>
   Widget build(BuildContext context) {
     super.build(context);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint('尝试恢复状态');
       scrollController.jumpTo(popularController.scrollOffset);
-      debugPrint('Popular加载完成');
     });
     return PopScope(
       canPop: false,
@@ -113,9 +108,7 @@ class _PopularPageState extends State<PopularPage>
         onRefresh: () async {
           if (popularController.keyword == '' &&
               popularController.isLoadingMore == false) {
-            popularController.isLoadingMore == true;
             await popularController.getAnimeList();
-            popularController.isLoadingMore == false;
           }
         },
         child: Scaffold(
@@ -141,8 +134,7 @@ class _PopularPageState extends State<PopularPage>
                   onTap: () {
                     setState(() {
                       _focusNode.requestFocus();
-                      // 添加动效
-                      _controller.clear(); // 如果需要清空文本字段内容
+                      _controller.clear(); 
                     });
                   },
                   onChanged: (t) {
@@ -160,7 +152,7 @@ class _PopularPageState extends State<PopularPage>
               ],
             ),
             elevation: 0, // 移除阴影效果
-            shape: Platform.isWindows
+            shape: Platform.isWindows || Platform.isLinux || Platform.isMacOS
                 ? const RoundedRectangleBorder(
                     // 添加圆角
                     borderRadius: BorderRadius.vertical(
@@ -171,7 +163,7 @@ class _PopularPageState extends State<PopularPage>
                 : null,
           ),
           body: Container(child: animeList),
-          floatingActionButton: Platform.isWindows
+          floatingActionButton: Platform.isWindows || Platform.isLinux || Platform.isMacOS
               ? Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -187,13 +179,11 @@ class _PopularPageState extends State<PopularPage>
                     ),
                     const Padding(
                       padding: EdgeInsets.only(
-                          left: 10.0), // Adjust padding as needed
+                          left: 10.0), 
                     ),
                     FloatingActionButton(
                       onPressed: () async {
-                        popularController.isLoadingMore == true;
                         await popularController.getAnimeList();
-                        popularController.isLoadingMore == false;
                         SmartDialog.showToast('列表更新完成');
                       },
                       child: const Icon(Icons.refresh),
@@ -217,11 +207,11 @@ class _PopularPageState extends State<PopularPage>
       return ListView.separated(
         controller: scrollController,
         separatorBuilder: (context, index) => const SizedBox(height: 8.0),
-        itemCount: popularController.cacheList.length == 0
+        itemCount: popularController.cacheList.isEmpty
             ? 1
             : popularController.cacheList.length,
         itemBuilder: (context, index) {
-          return popularController.cacheList.length != 0
+          return popularController.cacheList.isNotEmpty
               ? AnimeInfoCard(
                   info: popularController.cacheList[index],
                   index: index,

@@ -26,7 +26,6 @@ class _MyPageState extends State<MyPage> {
   late dynamic defaultDanmakuArea;
   late dynamic defaultThemeMode;
   late dynamic defaultThemeColor;
-  final _mineController = Modular.get<MyController>();
   final PopularController popularController = Modular.get<PopularController>();
 
   @override
@@ -34,7 +33,7 @@ class _MyPageState extends State<MyPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // 在widget构建完成后调用的函数
-      navigationBarState = Platform.isWindows
+      navigationBarState = Platform.isWindows || Platform.isLinux || Platform.isMacOS
           ? Provider.of<SideNavigationBarState>(context, listen: false)
           : Provider.of<NavigationBarState>(context, listen: false);
       navigationBarState.showNavigate();

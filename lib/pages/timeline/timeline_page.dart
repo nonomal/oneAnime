@@ -46,7 +46,7 @@ class _TimelinePageState extends State<TimelinePage>
   }
 
   void onBackPressed(BuildContext context) {
-    navigationBarState = Platform.isWindows
+    navigationBarState = Platform.isWindows || Platform.isLinux || Platform.isMacOS
         ? Provider.of<SideNavigationBarState>(context, listen: false)
         : Provider.of<NavigationBarState>(context, listen: false);
     navigationBarState.showNavigate();
@@ -185,7 +185,7 @@ class _TimelinePageState extends State<TimelinePage>
       );
     } else {
       return const Center(
-        child: Text('數據還沒有更新 (´;ω;`)'),
+        child: Text('数据还没有更新 (´;ω;`)'),
       );
     }
   }
@@ -234,7 +234,7 @@ class _TimelinePageState extends State<TimelinePage>
                     }
                     videoController.title = item.name ?? '';
                     SmartDialog.dismiss();
-                    navigationBarState = Platform.isWindows
+                    navigationBarState = Platform.isWindows || Platform.isLinux || Platform.isMacOS
                         ? Provider.of<SideNavigationBarState>(context,
                             listen: false)
                         : Provider.of<NavigationBarState>(context,

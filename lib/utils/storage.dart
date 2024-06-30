@@ -63,6 +63,7 @@ class SettingBoxKey {
       searchEnhanceEnable = 'searchEnhanceEnable', 
       // Todo 检查更新
       autoUpdate = 'autoUpdate',
+      alwaysOntop = 'alwaysOntop',
       danmakuEnhance = 'danmakuEnhance',
       danmakuBorder = 'danmakuBorder',
       danmakuOpacity = 'danmakuOpacity',
@@ -71,6 +72,8 @@ class SettingBoxKey {
       danmakuScroll = 'danmakuScroll',
       danmakuBottom = 'danmakuBottom',
       danmakuArea = 'danmakuArea',
+      danmakuDuration = 'danmakuDuration',
+      danmakuEnabledByDefault = 'danmakuEnabledByDefault',
       themeMode = 'themeMode',
       themeColor = 'themeColor',
       privateMode = 'privateMode',

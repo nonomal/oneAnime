@@ -28,10 +28,9 @@ class _FollowPageState extends State<FollowPage>
   @override
   void initState() {
     super.initState();
-    debugPrint('Popular 开始初始化');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // 在widget构建完成后调用的函数
-      navigationBarState = Platform.isWindows
+      navigationBarState = Platform.isWindows || Platform.isLinux || Platform.isMacOS
           ? Provider.of<SideNavigationBarState>(context, listen: false)
           : Provider.of<NavigationBarState>(context, listen: false);
       navigationBarState.showNavigate();
@@ -40,13 +39,11 @@ class _FollowPageState extends State<FollowPage>
     scrollController.addListener(() {
       followController.scrollOffset = scrollController.offset;
     });
-    debugPrint('Follow 监听器已添加');
   }
 
   @override
   void dispose() {
     scrollController.removeListener(() {});
-    debugPrint('popular 模块已卸载, 监听器移除');
     super.dispose();
   }
 

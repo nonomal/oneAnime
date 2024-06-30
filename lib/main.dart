@@ -5,14 +5,13 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:oneanime/app_module.dart';
 import 'package:oneanime/app_widget.dart';
 import 'package:oneanime/request/request.dart';
-import 'package:media_kit/media_kit.dart';
 import 'package:oneanime/utils/storage.dart';
 import 'package:flutter/services.dart';
 import 'package:oneanime/pages/error/error.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  if (Platform.isWindows) {
+  if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
     await windowManager.ensureInitialized();
     WindowOptions windowOptions = const WindowOptions(
       size: Size(1280, 800),
@@ -25,8 +24,8 @@ void main() async {
       await windowManager.show();
       await windowManager.focus();
     });
-    windowManager.setMaximizable(false);
-    windowManager.setResizable(false);
+    // windowManager.setMaximizable(false);
+    // windowManager.setResizable(false);
   }
   if (Platform.isAndroid || Platform.isIOS) {
     // 小白条、导航栏沉浸
@@ -38,7 +37,6 @@ void main() async {
     ));
   }
   SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  MediaKit.ensureInitialized();
   try {
     await GStorage.init();
   } catch (e) {
