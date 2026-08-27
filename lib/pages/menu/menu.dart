@@ -2,19 +2,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:oneanime/pages/router.dart';
 import 'package:provider/provider.dart';
+import 'package:oneanime/pages/my/my_controller.dart';
 
-class BottomMenu extends StatefulWidget {
-  const BottomMenu({super.key});
+class ScaffoldMenu extends StatefulWidget {
+  const ScaffoldMenu({super.key});
+
   @override
-  State<BottomMenu> createState() => _BottomMenu();
+  State<ScaffoldMenu> createState() => _ScaffoldMenu();
 }
 
 class NavigationBarState extends ChangeNotifier {
   int _selectedIndex = 0;
   bool _isHide = false;
+  bool _isBottom = false;
 
   int get selectedIndex => _selectedIndex;
+
   bool get isHide => _isHide;
+
+  bool get isBottom => _isBottom;
 
   void updateSelectedIndex(int pageIndex) {
     _selectedIndex = pageIndex;
@@ -32,84 +38,132 @@ class NavigationBarState extends ChangeNotifier {
   }
 }
 
-class _BottomMenu extends State<BottomMenu> {
-  var selectedIndex = 0;
+class _ScaffoldMenu extends State<ScaffoldMenu> {
   final PageController _page = PageController();
+  final mineController = Modular.get<MyController>();
 
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
         create: (context) => NavigationBarState(),
-        child: Scaffold(
-          body: Container(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            child: PageView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              controller: _page,
-              itemCount: menu.size,
-              onPageChanged: (i) =>
-                  Modular.to.navigate("/tab${menu.getPath(i)}/"),
-              itemBuilder: (_, __) => const RouterOutlet(),
+        child: Consumer<NavigationBarState>(builder: (context, state, _) {
+          return OrientationBuilder(builder: (context, orientation) {
+            state._isBottom = orientation == Orientation.portrait;
+            return orientation != Orientation.portrait
+                ? sideMenuWidget(context, state)
+                : bottomMenuWidget(context, state);
+          });
+        }));
+  }
+
+  Widget bottomMenuWidget(BuildContext context, NavigationBarState state) {
+    return Scaffold(
+        body: Container(
+          color: Theme.of(context).colorScheme.primaryContainer,
+          child: PageView.builder(
+            physics: const NeverScrollableScrollPhysics(),
+            controller: _page,
+            itemCount: menu.size,
+            itemBuilder: (_, __) => const RouterOutlet(),
+          ),
+        ),
+        bottomNavigationBar: state.isHide
+            ? const SizedBox(height: 0)
+            : NavigationBar(
+                destinations: const <Widget>[
+                  NavigationDestination(
+                    selectedIcon: Icon(Icons.home),
+                    icon: Icon(Icons.home_outlined),
+                    label: '推荐',
+                  ),
+                  NavigationDestination(
+                    selectedIcon: Icon(Icons.timeline),
+                    icon: Icon(Icons.timeline_outlined),
+                    label: '时间表',
+                  ),
+                  NavigationDestination(
+                    selectedIcon: Icon(Icons.favorite),
+                    icon: Icon(Icons.favorite_outlined),
+                    label: '追番',
+                  ),
+                  NavigationDestination(
+                    selectedIcon: Icon(Icons.settings),
+                    icon: Icon(Icons.settings),
+                    label: '我的',
+                  ),
+                ],
+                selectedIndex: state.selectedIndex,
+                onDestinationSelected: (int index) {
+                  state.updateSelectedIndex(index);
+                  Modular.to.navigate("/tab${menu.getPath(index)}/");
+                },
+              ));
+  }
+
+  Widget sideMenuWidget(BuildContext context, NavigationBarState state) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+      body: Row(
+        children: [
+          Visibility(
+            visible: !state.isHide,
+            child: NavigationRail(
+              backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+              groupAlignment: 1.0,
+              leading: FloatingActionButton(
+                elevation: 0,
+                heroTag: null,
+                onPressed: () {
+                  mineController.checkUpdata();
+                },
+                child: const Icon(Icons.cloud_outlined),
+              ),
+              labelType: NavigationRailLabelType.selected,
+              destinations: const <NavigationRailDestination>[
+                NavigationRailDestination(
+                  selectedIcon: Icon(Icons.home),
+                  icon: Icon(Icons.home_outlined),
+                  label: Text('推荐'),
+                ),
+                NavigationRailDestination(
+                  selectedIcon: Icon(Icons.timeline),
+                  icon: Icon(Icons.timeline_outlined),
+                  label: Text('时间表'),
+                ),
+                NavigationRailDestination(
+                  selectedIcon: Icon(Icons.favorite),
+                  icon: Icon(Icons.favorite_border),
+                  label: Text('追番'),
+                ),
+                NavigationRailDestination(
+                  selectedIcon: Icon(Icons.settings),
+                  icon: Icon(Icons.settings_outlined),
+                  label: Text('我的'),
+                ),
+              ],
+              selectedIndex: state.selectedIndex,
+              onDestinationSelected: (int index) {
+                state.updateSelectedIndex(index);
+                Modular.to.navigate("/tab${menu.getPath(index)}/");
+              },
             ),
           ),
-          bottomNavigationBar:
-              Consumer<NavigationBarState>(builder: (context, state, child) {
-            return state.isHide
-                ? const SizedBox(height: 0)
-                : NavigationBar(
-                    destinations: const <Widget>[
-                      NavigationDestination(
-                        selectedIcon: Icon(Icons.home),
-                        icon: Icon(Icons.home_outlined),
-                        label: '推荐',
-                      ),
-                      NavigationDestination(
-                        selectedIcon: Icon(Icons.timeline),
-                        icon: Icon(Icons.timeline_outlined),
-                        label: '时间表',
-                      ),
-                      NavigationDestination(
-                        selectedIcon: Icon(Icons.favorite),
-                        icon: Icon(Icons.favorite_border),
-                        label: '追番',
-                      ),
-                      NavigationDestination(
-                        selectedIcon: Icon(Icons.settings),
-                        icon: Icon(Icons.settings_outlined),
-                        label: '我的',
-                      ),
-                    ],
-                    selectedIndex: state.selectedIndex,
-                    onDestinationSelected: (int index) {
-                      // setState(() {
-                      //   selectedIndex = index;
-                      // });
-                      state.updateSelectedIndex(index);
-                      switch (index) {
-                        case 0:
-                          {
-                            Modular.to.navigate('/tab/popular/');
-                          }
-                          break;
-                        case 1:
-                          {
-                            Modular.to.navigate('/tab/timeline/');
-                          }
-                          break;
-                        case 2:
-                          {
-                            Modular.to.navigate('/tab/follow/');
-                          }
-                          break;
-                        case 3:
-                          {
-                            Modular.to.navigate('/tab/my/');
-                          }
-                          break;
-                      }
-                    },
-                  );
-          }),
-        ));
+          Expanded(
+            child: Container(
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primaryContainer,
+              ),
+              child: ClipRRect(
+                child: PageView.builder(
+                  physics: const NeverScrollableScrollPhysics(),
+                  itemCount: menu.size,
+                  itemBuilder: (_, __) => const RouterOutlet(),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

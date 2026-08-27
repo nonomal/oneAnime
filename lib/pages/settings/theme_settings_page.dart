@@ -4,12 +4,15 @@ import 'package:flutter_modular/flutter_modular.dart';
 import 'package:oneanime/utils/storage.dart';
 import 'package:hive/hive.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
-import 'package:adaptive_theme/adaptive_theme.dart';
+import 'package:oneanime/bean/settings/theme_provider.dart';
 import 'package:oneanime/pages/popular/popular_controller.dart';
 import 'package:oneanime/bean/appbar/sys_app_bar.dart';
 import 'package:oneanime/bean/settings/color_type.dart';
 import 'package:oneanime/bean/settings/settings.dart';
 import 'package:oneanime/utils/utils.dart';
+import 'package:oneanime/i18n/strings.g.dart';
+import 'package:oneanime/utils/constans.dart';
+import 'package:provider/provider.dart';
 
 class ThemeSettingsPage extends StatefulWidget {
   const ThemeSettingsPage({super.key});
@@ -21,40 +24,44 @@ class ThemeSettingsPage extends StatefulWidget {
 class _ThemeSettingsPageState extends State<ThemeSettingsPage> {
   dynamic navigationBarState;
   Box setting = GStorage.setting;
+  late Translations i18n;
   late dynamic defaultDanmakuArea;
   late dynamic defaultThemeMode;
   late dynamic defaultThemeColor;
   late bool oledEnhance;
+  late bool defaultUseSystemFont;
   final PopularController popularController = Modular.get<PopularController>();
+  late final ThemeProvider themeProvider;
 
   @override
   void initState() {
     super.initState();
+    themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     defaultThemeMode =
         setting.get(SettingBoxKey.themeMode, defaultValue: 'system');
     defaultThemeColor =
         setting.get(SettingBoxKey.themeColor, defaultValue: 'default');
+    defaultUseSystemFont =
+        setting.get(SettingBoxKey.useSystemFont, defaultValue: false);
     oledEnhance = setting.get(SettingBoxKey.oledEnhance, defaultValue: false);
-  }
-
-  void onBackPressed(BuildContext context) {
-    Modular.to.navigate('/tab/my/');
   }
 
   void setTheme(Color? color) {
     var defaultDarkTheme = ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
+      pageTransitionsTheme: pageTransitionsTheme2024,
       colorSchemeSeed: color,
     );
     var oledDarkTheme = Utils.oledDarkTheme(defaultDarkTheme);
-    AdaptiveTheme.of(context).setTheme(
-      light: ThemeData(
+    themeProvider.setTheme(
+      ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
+        pageTransitionsTheme: pageTransitionsTheme2024,
         colorSchemeSeed: color,
       ),
-      dark: oledEnhance ? oledDarkTheme : defaultDarkTheme,
+      oledEnhance ? oledDarkTheme : defaultDarkTheme,
     );
     defaultThemeColor = color?.value.toRadixString(16) ?? 'default';
     setting.put(SettingBoxKey.themeColor, defaultThemeColor);
@@ -62,16 +69,18 @@ class _ThemeSettingsPageState extends State<ThemeSettingsPage> {
 
   void resetTheme() {
     var defaultDarkTheme = ThemeData(
-        useMaterial3: true,
-        brightness: Brightness.dark,
-      );
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      pageTransitionsTheme: pageTransitionsTheme2024,
+    );
     var oledDarkTheme = Utils.oledDarkTheme(defaultDarkTheme);
-    AdaptiveTheme.of(context).setTheme(
-      light: ThemeData(
+    themeProvider.setTheme(
+      ThemeData(
         useMaterial3: true,
         brightness: Brightness.light,
+        pageTransitionsTheme: pageTransitionsTheme2024,
       ),
-      dark: oledEnhance ? oledDarkTheme : defaultDarkTheme,
+      oledEnhance ? oledDarkTheme : defaultDarkTheme,
     );
     defaultThemeColor = 'default';
     setting.put(SettingBoxKey.themeColor, 'default');
@@ -79,13 +88,13 @@ class _ThemeSettingsPageState extends State<ThemeSettingsPage> {
 
   void updateTheme(String theme) async {
     if (theme == 'dark') {
-      AdaptiveTheme.of(context).setDark();
+      themeProvider.setThemeMode(ThemeMode.dark);
     }
     if (theme == 'light') {
-      AdaptiveTheme.of(context).setLight();
+      themeProvider.setThemeMode(ThemeMode.light);
     }
     if (theme == 'system') {
-      AdaptiveTheme.of(context).setSystem();
+      themeProvider.setThemeMode(ThemeMode.system);
     }
     await setting.put(SettingBoxKey.themeMode, theme);
     setState(() {
@@ -104,188 +113,209 @@ class _ThemeSettingsPageState extends State<ThemeSettingsPage> {
     setTheme(color);
   }
 
+  void updateFontFamily() {
+    defaultUseSystemFont = setting.get(SettingBoxKey.useSystemFont, defaultValue: false);
+    themeProvider.setFontFamily(defaultUseSystemFont);
+    setState(() {});
+  }
+
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (bool didPop) async {
-        onBackPressed(context);
-      },
-      child: Scaffold(
-        appBar: const SysAppBar(title: Text('外观设置')),
-        body: Column(
-          children: [
-            ListTile(
-              onTap: () async {
-                final List<Map<String, dynamic>> colorThemes = colorThemeTypes;
-                SmartDialog.show(
-                    useAnimation: false,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: const Text('配色方案'),
-                        content: StatefulBuilder(builder:
-                            (BuildContext context, StateSetter setState) {
-                          return Wrap(
-                            alignment: WrapAlignment.center,
-                            spacing: 22,
-                            runSpacing: 18,
-                            children: [
-                              ...colorThemes.map(
-                                (e) {
-                                  final index = colorThemes.indexOf(e);
-                                  return GestureDetector(
-                                    onTap: () {
-                                      index == 0
-                                          ? resetTheme()
-                                          : setTheme(e['color']);
-                                      SmartDialog.dismiss();
-                                    },
-                                    child: Column(
-                                      children: [
-                                        Container(
-                                          width: 46,
-                                          height: 46,
-                                          decoration: BoxDecoration(
+    i18n = Translations.of(context);
+    return Scaffold(
+      appBar: SysAppBar(title: Text(i18n.my.themeSettings.title)),
+      body: Column(
+        children: [
+          ListTile(
+            onTap: () async {
+              final List<Map<String, dynamic>> colorThemes = colorThemeTypes;
+              SmartDialog.show(
+                  useAnimation: false,
+                  builder: (context) {
+                    return AlertDialog(
+                      title: Text(i18n.my.themeSettings.colorPalette),
+                      content: StatefulBuilder(builder:
+                          (BuildContext context, StateSetter setState) {
+                        return Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 22,
+                          runSpacing: 18,
+                          children: [
+                            ...colorThemes.map(
+                              (e) {
+                                final index = colorThemes.indexOf(e);
+                                return GestureDetector(
+                                  onTap: () {
+                                    index == 0
+                                        ? resetTheme()
+                                        : setTheme(e['color']);
+                                    SmartDialog.dismiss();
+                                  },
+                                  child: Column(
+                                    children: [
+                                      Container(
+                                        width: 46,
+                                        height: 46,
+                                        decoration: BoxDecoration(
+                                          color: e['color'].withOpacity(0.8),
+                                          borderRadius:
+                                              BorderRadius.circular(50),
+                                          border: Border.all(
+                                            width: 2,
                                             color: e['color'].withOpacity(0.8),
-                                            borderRadius:
-                                                BorderRadius.circular(50),
-                                            border: Border.all(
-                                              width: 2,
-                                              color:
-                                                  e['color'].withOpacity(0.8),
-                                            ),
-                                          ),
-                                          child: const AnimatedOpacity(
-                                            opacity: 0,
-                                            duration:
-                                                Duration(milliseconds: 200),
-                                            child: Icon(
-                                              Icons.done,
-                                              color: Colors.black,
-                                              size: 20,
-                                            ),
                                           ),
                                         ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          e['label'],
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            color: Theme.of(context)
-                                                .colorScheme
-                                                .outline,
+                                        child: const AnimatedOpacity(
+                                          opacity: 0,
+                                          duration: Duration(milliseconds: 200),
+                                          child: Icon(
+                                            Icons.done,
+                                            color: Colors.black,
+                                            size: 20,
                                           ),
                                         ),
-                                      ],
-                                    ),
-                                  );
-                                },
-                              )
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        e['label'],
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Theme.of(context)
+                                              .colorScheme
+                                              .outline,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                            )
+                          ],
+                        );
+                      }),
+                    );
+                  });
+            },
+            dense: false,
+            title: Text(i18n.my.themeSettings.colorPalette),
+          ),
+          Platform.isAndroid
+              ? ListTile(
+                  onTap: () async {
+                    Modular.to.pushNamed('/settings/theme/display');
+                  },
+                  dense: false,
+                  title: Text(i18n.my.themeSettings.refreshRate),
+                  // trailing: const Icon(Icons.navigate_next),
+                )
+              : Container(),
+          ListTile(
+            onTap: () {
+              SmartDialog.show(
+                  useAnimation: false,
+                  builder: (context) {
+                    return AlertDialog(
+                      title: Text(i18n.my.themeSettings.themeMode),
+                      content: StatefulBuilder(
+                        builder: (BuildContext context, StateSetter setState) {
+                          return Wrap(
+                            spacing: 8,
+                            runSpacing: 2,
+                            children: [
+                              defaultThemeMode == 'system'
+                                  ? FilledButton(
+                                      onPressed: () {
+                                        updateTheme('system');
+                                        SmartDialog.dismiss();
+                                      },
+                                      child: Text(i18n
+                                          .my.themeSettings.themeModeSystem))
+                                  : FilledButton.tonal(
+                                      onPressed: () {
+                                        updateTheme('system');
+                                        SmartDialog.dismiss();
+                                      },
+                                      child: Text(i18n
+                                          .my.themeSettings.themeModeSystem)),
+                              defaultThemeMode == 'light'
+                                  ? FilledButton(
+                                      onPressed: () {
+                                        updateTheme('light');
+                                        SmartDialog.dismiss();
+                                      },
+                                      child: Text(
+                                          i18n.my.themeSettings.themeModeLight))
+                                  : FilledButton.tonal(
+                                      onPressed: () {
+                                        updateTheme('light');
+                                        SmartDialog.dismiss();
+                                      },
+                                      child: Text(i18n
+                                          .my.themeSettings.themeModeLight)),
+                              defaultThemeMode == 'dark'
+                                  ? FilledButton(
+                                      onPressed: () {
+                                        updateTheme('dark');
+                                        SmartDialog.dismiss();
+                                      },
+                                      child: Text(
+                                          i18n.my.themeSettings.themeModeDark))
+                                  : FilledButton.tonal(
+                                      onPressed: () {
+                                        updateTheme('dark');
+                                        SmartDialog.dismiss();
+                                      },
+                                      child: Text(
+                                          i18n.my.themeSettings.themeModeDark)),
                             ],
                           );
-                        }),
-                      );
-                    });
-              },
-              dense: false,
-              title: const Text('配色方案'),
+                        },
+                      ),
+                    );
+                  });
+            },
+            dense: false,
+            title: Text(i18n.my.themeSettings.themeMode),
+            subtitle: Text(
+                defaultThemeMode == 'light'
+                    ? i18n.my.themeSettings.themeModeLight
+                    : (defaultThemeMode == 'dark'
+                        ? i18n.my.themeSettings.themeModeDark
+                        : i18n.my.themeSettings.themeModeSystem),
+                style: Theme.of(context)
+                    .textTheme
+                    .labelMedium!
+                    .copyWith(color: Theme.of(context).colorScheme.outline)),
+          ),
+          InkWell(
+            child: SetSwitchItem(
+              title: i18n.my.themeSettings.useSystemFont,
+              subTitle: i18n.my.themeSettings.useSystemFont,
+              setKey: SettingBoxKey.useSystemFont,
+              callFn: (_) => {updateFontFamily()},
+              defaultVal: true,
             ),
-            Platform.isAndroid ? ListTile(
-              onTap: () async {
-                Modular.to.pushNamed('/tab/my/theme/display');
-              },
-              dense: false,
-              title: const Text('屏幕帧率'),
-              // trailing: const Icon(Icons.navigate_next),
-            ) : Container(),
-            ListTile(
-              onTap: () {
-                SmartDialog.show(
-                    useAnimation: false,
-                    builder: (context) {
-                      return AlertDialog(
-                        title: const Text('主题模式'),
-                        content: StatefulBuilder(
-                          builder:
-                              (BuildContext context, StateSetter setState) {
-                            return Wrap(
-                              spacing: 8,
-                              runSpacing: 2,
-                              children: [
-                                defaultThemeMode == 'system'
-                                    ? FilledButton(
-                                        onPressed: () {
-                                          updateTheme('system');
-                                          SmartDialog.dismiss();
-                                        },
-                                        child: const Text("跟随系统"))
-                                    : FilledButton.tonal(
-                                        onPressed: () {
-                                          updateTheme('system');
-                                          SmartDialog.dismiss();
-                                        },
-                                        child: const Text("跟随系统")),
-                                defaultThemeMode == 'light'
-                                    ? FilledButton(
-                                        onPressed: () {
-                                          updateTheme('light');
-                                          SmartDialog.dismiss();
-                                        },
-                                        child: const Text("浅色"))
-                                    : FilledButton.tonal(
-                                        onPressed: () {
-                                          updateTheme('light');
-                                          SmartDialog.dismiss();
-                                        },
-                                        child: const Text("浅色")),
-                                defaultThemeMode == 'dark'
-                                    ? FilledButton(
-                                        onPressed: () {
-                                          updateTheme('dark');
-                                          SmartDialog.dismiss();
-                                        },
-                                        child: const Text("深色"))
-                                    : FilledButton.tonal(
-                                        onPressed: () {
-                                          updateTheme('dark');
-                                          SmartDialog.dismiss();
-                                        },
-                                        child: const Text("深色")),
-                              ],
-                            );
-                          },
-                        ),
-                      );
-                    });
-              },
-              dense: false,
-              title: const Text('主题模式'),
-              subtitle: Text(
-                  defaultThemeMode == 'light'
-                      ? '浅色'
-                      : (defaultThemeMode == 'dark' ? '深色' : '跟随系统'),
-                  style: Theme.of(context)
-                      .textTheme
-                      .labelMedium!
-                      .copyWith(color: Theme.of(context).colorScheme.outline)),
+          ),
+          InkWell(
+            child: SetSwitchItem(
+              title: i18n.my.themeSettings.OLEDEnhance,
+              subTitle: i18n.my.themeSettings.OLEDEnhanceSubtitle,
+              setKey: SettingBoxKey.oledEnhance,
+              callFn: (_) => {updateOledEnhance()},
+              defaultVal: false,
             ),
-            InkWell(
-              child: SetSwitchItem(
-                title: 'OLED优化',
-                subTitle: '深色模式下使用纯黑背景',
-                setKey: SettingBoxKey.oledEnhance,
-                callFn: (_) => {updateOledEnhance()},
-                defaultVal: false,
-              ),
-            ),
-          ],
-        ),
+          ),
+          !Utils.isCompact()
+              ? InkWell(
+                  child: SetSwitchItem(
+                    title: i18n.my.themeSettings.alwaysOntop,
+                    subTitle: i18n.my.themeSettings.alwaysOntopSubtitle,
+                    setKey: SettingBoxKey.alwaysOntop,
+                    defaultVal: true,
+                  ),
+                )
+              : Container(),
+        ],
       ),
     );
   }

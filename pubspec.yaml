@@ -16,10 +16,11 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.1.8+1
+version: 1.4.7+10407
 
 environment:
   sdk: '>=3.2.6 <4.0.0'
+  flutter: 3.47.1
 
 # Dependencies specify other packages that your package needs in order to work.
 # To automatically upgrade your package dependencies to the latest versions
@@ -37,9 +38,9 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.2
-  flutter_modular: ^6.3.2
-  mobx: ^2.2.1
-  flutter_mobx: ^2.0.6+5
+  flutter_modular: ^6.3.4
+  mobx: ^2.3.3
+  flutter_mobx: ^2.2.1
   dio: ^5.0.0
   cookie_jar: ^4.0.8
   dio_cookie_manager: ^3.1.1
@@ -48,32 +49,72 @@ dependencies:
   path_provider: ^2.1.1
   hive: ^2.2.3
   hive_flutter: ^1.1.0
-  flutter_smart_dialog: ^4.9.4
-  cached_network_image: ^3.3.0
-  connectivity_plus: ^4.0.1
-  url_launcher: ^6.1.14
-  device_info_plus: ^9.0.2
-  flutter_open_chinese_convert: ^0.3.0
+  flutter_smart_dialog: ^4.9.8
+  connectivity_plus: ^6.0.5
+  url_launcher: ^6.3.0
+  device_info_plus: ^10.1.2
   flutter_launcher_icons: ^0.13.1
-  window_manager: ^0.3.8
+  window_manager: ^0.5.1
 
-  media_kit: ^1.1.10                             # Primary package.
-  media_kit_video: ^1.2.4                        # For video rendering.
-  media_kit_libs_video: ^1.0.4                   # Native video dependencies.
+  slang: ^3.31.2
+  slang_flutter: ^3.31.0
+
+  # video_player: ^2.9.2
+  # fvp: ^0.28.0
   audio_video_progress_bar: ^2.0.2
 
-  ns_danmaku: 
-    git: 
-        url: https://github.com/songbirdzz/flutter_ns_danmaku
-        ref: master
+  canvas_danmaku: ^0.3.2
 
-  auto_orientation: ^2.3.1
-  flutter_volume_controller: ^1.3.1
-  screen_brightness: ^0.2.2+1
-  wakelock_plus: ^1.1.1
-  adaptive_theme: ^3.6.0
+  flutter_volume_controller: ^1.3.2
+  screen_brightness: ^2.0.1
   flutter_displaymode: ^0.6.0
   ffi: ^2.1.0
+
+  provider: any
+
+  flutter_open_chinese_convert: ^0.6.0
+  media_kit:
+    git:
+      url: https://github.com/Predidit/media-kit.git
+      ref: 994465d9bfca3f39d0b41199d16e7fd93fe97881
+      path: ./media_kit
+  media_kit_video:
+    git:
+      url: https://github.com/Predidit/media-kit.git
+      ref: 994465d9bfca3f39d0b41199d16e7fd93fe97881
+      path: ./media_kit_video
+  media_kit_libs_video:
+    git:
+      url: https://github.com/Predidit/media-kit.git
+      ref: 994465d9bfca3f39d0b41199d16e7fd93fe97881
+      path: ./libs/universal/media_kit_libs_video
+
+dependency_overrides:
+  media_kit_libs_linux:
+    git:
+      url: https://github.com/Predidit/media-kit.git
+      ref: 994465d9bfca3f39d0b41199d16e7fd93fe97881
+      path: ./libs/linux/media_kit_libs_linux
+  media_kit_libs_ios_video:
+    git:
+      url: https://github.com/Predidit/media-kit.git
+      ref: 994465d9bfca3f39d0b41199d16e7fd93fe97881
+      path: ./libs/ios/media_kit_libs_ios_video
+  media_kit_libs_android_video:
+    git:
+      url: https://github.com/Predidit/media-kit.git
+      ref: 994465d9bfca3f39d0b41199d16e7fd93fe97881
+      path: ./libs/android/media_kit_libs_android_video
+  media_kit_libs_windows_video:
+    git:
+      url: https://github.com/Predidit/media-kit.git
+      ref: 994465d9bfca3f39d0b41199d16e7fd93fe97881
+      path: ./libs/windows/media_kit_libs_windows_video
+  media_kit_libs_macos_video:
+    git:
+      url: https://github.com/Predidit/media-kit.git
+      ref: 994465d9bfca3f39d0b41199d16e7fd93fe97881
+      path: ./libs/macos/media_kit_libs_macos_video
 
 dev_dependencies:
   flutter_test:
@@ -86,8 +127,9 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^2.0.0
   build_runner: ^2.4.6
-  mobx_codegen: ^2.3.0
+  mobx_codegen: ^2.6.1
   hive_generator: ^2.0.0
+  slang_build_runner: ^3.31.0
   ffigen: ^11.0.0
 
 # For information on the generic Dart part of this file, see the
@@ -104,10 +146,10 @@ flutter_launcher_icons:
   adaptive_icon_monochrome: assets/images/logo/logo_android_2.png
   macos:
     generate: true
-    image_path: assets/images/logo/logo_ios.png
+    image_path: assets/images/logo/logo_rounded.png
   windows:
     generate: true
-    image_path: assets/images/logo/logo_ios.png
+    image_path: assets/images/logo/logo_rounded.png
     icon_size: 256 # min:48, max:256, default: 48
 
 
@@ -125,8 +167,8 @@ flutter:
   #   - images/a_dot_ham.jpeg
   assets:
     - assets/images/ 
-    - assets/images/lv/
     - assets/images/logo/
+    - assets/statements/
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/assets-and-images/#resolution-aware
@@ -153,6 +195,10 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+  fonts:
+    - family: MI_Sans_Regular
+      fonts:
+        - asset: assets/fonts/MiSans-Regular.ttf
 
 ffigen:
   name: "opencc"

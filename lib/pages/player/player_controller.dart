@@ -1,19 +1,14 @@
 import 'dart:io';
-
-import 'package:flutter/material.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:mobx/mobx.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
-import 'package:ns_danmaku/danmaku_controller.dart';
-import 'package:ns_danmaku/ns_danmaku.dart';
+import 'package:canvas_danmaku/canvas_danmaku.dart';
 import 'package:oneanime/utils/constans.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
-import 'package:device_info_plus/device_info_plus.dart';
-import 'package:auto_orientation/auto_orientation.dart';
-import 'package:window_manager/window_manager.dart';
 import 'package:oneanime/utils/storage.dart';
 import 'package:hive/hive.dart';
+import 'package:oneanime/utils/utils.dart';
 
 part 'player_controller.g.dart';
 
@@ -43,19 +38,7 @@ abstract class _PlayerController with Store {
       debugPrint('未找到已经存在的 player');
     }
     debugPrint('VideoURL开始初始化');
-    mediaPlayer = await createVideoController();
-    if (offset != 0 && playResume) {
-      var sub = mediaPlayer.stream.buffer.listen(null);
-      sub.onData((event) async {
-        if (event.inSeconds > 0) {
-          // This is a workaround for unable to await for `mediaPlayer.stream.buffer.first`
-          // It seems that when the `buffer.first` is fired, the media is not fully loaded 
-          // and the player will not seek properlly.
-          await sub.cancel();
-          await mediaPlayer.seek(Duration(seconds: offset));
-        }
-      });
-    }
+    mediaPlayer = await createVideoController(offset: offset);
     danmakuController.clear();
     debugPrint('VideoURL初始化完成');
     dataStatus = 'loaded';
@@ -70,21 +53,29 @@ abstract class _PlayerController with Store {
     }
   }
 
-  Future<Player> createVideoController() async {
+  Future<Player> createVideoController({int offset = 0}) async {
+    var httpHeaders = {
+      'user-agent': Utils.getRandomUA(),
+      'referer': HttpString.baseUrl,
+      'Cookie': videoCookie,
+    };
+    bool hAenable = setting.get(SettingBoxKey.HAenable, defaultValue: true);
+    bool aotoPlay = setting.get(SettingBoxKey.autoPlay, defaultValue: true);
     mediaPlayer = Player(
       configuration: const PlayerConfiguration(
-        // 默认缓存 5M 大小
-        bufferSize: 5 * 1024 * 1024, //panic
+        bufferSize: 15 * 1024 * 1024,
       ),
     );
 
     var pp = mediaPlayer.platform as NativePlayer;
-    // 解除倍速限制
+    // media-kit 默认启用硬盘作为双重缓存，这可以维持大缓存的前提下减轻内存压力
+    // media-kit 内部硬盘缓存目录按照 Linux 配置，这导致该功能在其他平台上被损坏
+    // 该设置可以在所有平台上正确启用双重缓存
+    await pp.setProperty("demuxer-cache-dir", await Utils.getPlayerTempPath());
     await pp.setProperty("af", "scaletempo2=max-speed=8");
-    //  音量不一致
     if (Platform.isAndroid) {
       await pp.setProperty("volume-max", "100");
-      await pp.setProperty("ao", "audiotrack,opensles");
+      await pp.setProperty("ao", "opensles");
     }
 
     await mediaPlayer.setAudioTrack(
@@ -93,114 +84,34 @@ abstract class _PlayerController with Store {
 
     videoController = VideoController(
       mediaPlayer,
-      configuration: const VideoControllerConfiguration(
-        enableHardwareAcceleration: true,
-        androidAttachSurfaceAfterVideoParameters: false,
-      ),
+      configuration: (Platform.isAndroid && hAenable)
+          ? const VideoControllerConfiguration(
+              vo: 'mediacodec_embed',
+              hwdec: 'mediacodec',
+              androidAttachSurfaceAfterVideoParameters: false,
+            )
+          : VideoControllerConfiguration(
+              enableHardwareAcceleration: hAenable,
+              hwdec: hAenable ? null : 'no',
+              androidAttachSurfaceAfterVideoParameters: false,
+            ),
     );
-    debugPrint('videoController 配置成功');
-
-    var httpHeaders = {
-      'user-agent':
-          'Mozilla/5.0 (Macintosh; Intel Mac OS X 13_3_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.4 Safari/605.1.15',
-      'referer': HttpString.baseUrl,
-      'Cookie': videoCookie,
-    };
-
-    bool aotoPlay = setting.get(SettingBoxKey.autoPlay, defaultValue: true);
-
     mediaPlayer.setPlaylistMode(PlaylistMode.none);
-    mediaPlayer.open(
-      Media(videoUrl, httpHeaders: httpHeaders),
+
+    // error handle
+    mediaPlayer.stream.error.listen((event) {
+      SmartDialog.showToast(
+        'Player intent error ${event.toString()} $videoUrl',
+        displayType: SmartToastType.onlyRefresh,
+      );
+    });
+
+    await mediaPlayer.open(
+      Media(videoUrl,
+          start: Duration(seconds: offset), httpHeaders: httpHeaders),
       play: aotoPlay,
     );
     return mediaPlayer;
-  }
-
-  Future<void> enterFullScreen() async {
-    if (Platform.isWindows) {
-      await windowManager.setFullScreen(true);
-      return;
-    }
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
-    await landScape();
-    await SystemChrome.setEnabledSystemUIMode(
-    SystemUiMode.immersiveSticky,
-  );
-  }
-
-  //退出全屏显示
-  Future<void> exitFullScreen() async {
-    debugPrint('退出全屏模式');
-    if (Platform.isWindows) {
-      await windowManager.setFullScreen(false);
-    }
-    dynamic document;
-    late SystemUiMode mode = SystemUiMode.edgeToEdge;
-    try {
-      if (kIsWeb) {
-        document.exitFullscreen();
-      } else if (Platform.isAndroid || Platform.isIOS) {
-        if (Platform.isAndroid &&
-            (await DeviceInfoPlugin().androidInfo).version.sdkInt < 29) {
-          mode = SystemUiMode.manual;
-        }
-        await SystemChrome.setEnabledSystemUIMode(
-          mode,
-          overlays: SystemUiOverlay.values,
-        );
-        // await SystemChrome.setPreferredOrientations([]);
-        verticalScreen();
-      } else if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-        await const MethodChannel('com.alexmercerind/media_kit_video')
-            .invokeMethod(
-          'Utils.ExitNativeFullscreen',
-        );
-        // verticalScreen();
-      }
-    } catch (exception, stacktrace) {
-      debugPrint(exception.toString());
-      debugPrint(stacktrace.toString());
-    }
-  }
-
-  //横屏
-  Future<void> landScape() async {
-    dynamic document;
-    try {
-      if (kIsWeb) {
-        await document.documentElement?.requestFullscreen();
-      } else if (Platform.isAndroid || Platform.isIOS) {
-        // await SystemChrome.setEnabledSystemUIMode(
-        //   SystemUiMode.immersiveSticky,
-        //   overlays: [],
-        // );
-        // await SystemChrome.setPreferredOrientations(
-        //   [
-        //     DeviceOrientation.landscapeLeft,
-        //     DeviceOrientation.landscapeRight,
-        //   ],
-        // );
-        await AutoOrientation.landscapeAutoMode(forceSensor: true);
-      } else if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) {
-        await const MethodChannel('com.alexmercerind/media_kit_video')
-            .invokeMethod(
-          'Utils.EnterNativeFullscreen',
-        );
-      }
-    } catch (exception, stacktrace) {
-      debugPrint(exception.toString());
-      debugPrint(stacktrace.toString());
-    }
-  }
-
-//竖屏
-  Future<void> verticalScreen() async {
-    await SystemChrome.setPreferredOrientations([
-      DeviceOrientation.portraitUp,
-    ]);
   }
 
   Function get setRate {
@@ -231,11 +142,6 @@ abstract class _PlayerController with Store {
     return mediaPlayer.state.completed;
   }
 
-  Future playOrPause() async {
-    mediaPlayer.state.playing ? danmakuController.pause() : danmakuController.resume();
-    await mediaPlayer.playOrPause();
-  }
-
   Future seek(Duration duration) async {
     danmakuController.clear();
     await mediaPlayer.seek(duration);
@@ -249,5 +155,13 @@ abstract class _PlayerController with Store {
   Future play() async {
     danmakuController.resume();
     await mediaPlayer.play();
+  }
+
+  Future playOrPause() async {
+    if (mediaPlayer.state.playing) {
+      pause();
+    } else {
+      play();
+    }
   }
 }

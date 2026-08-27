@@ -1,53 +1,41 @@
-import 'dart:io';
-
+import 'package:oneanime/utils/utils.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
-import 'package:flutter_modular/flutter_modular.dart';
-import 'package:oneanime/pages/video/video_controller.dart';
+import 'package:oneanime/i18n/strings.g.dart';
 
-class BangumiPanel extends StatefulWidget {
+class BangumiPanel extends StatelessWidget {
   const BangumiPanel({
     super.key,
-    this.sheetHeight,
+    required this.title,
+    required this.episodeLength,
+    required this.currentEpisode,
+    required this.onChangeEpisode,
   });
 
-  final double? sheetHeight;
-
-  @override
-  State<BangumiPanel> createState() => _BangumiPanelState();
-}
-
-class _BangumiPanelState extends State<BangumiPanel> {
-  final ScrollController listViewScrollCtr = ScrollController();
-  final VideoController videoController = Modular.get<VideoController>();
-  void changeFucCall(int episode) async {
-    await videoController.changeEpisode(episode);
-  }
+  final String title;
+  final int episodeLength;
+  final int currentEpisode;
+  final Future<void> Function(int episode) onChangeEpisode;
 
   @override
   Widget build(BuildContext context) {
-    return Observer(builder: (context) {
-      return Column(
+    final Translations i18n = Translations.of(context);
+    final ScrollController listViewScrollCtr = ScrollController();
+
+    return Expanded(
+      child: Column(
         children: [
-          Platform.isWindows
-              ? Column(
-                  children: [
-                    const SizedBox(height: 7),
-                    SizedBox(
-                        height: 0,
-                        child: Text(' 正在播放：${videoController.title}'))
-                  ],
-                )
+          !Utils.isCompact()
+              ? const SizedBox(height: 7)
               : Padding(
-                  padding: const EdgeInsets.only(top: 10, bottom: 6),
+                  padding: const EdgeInsets.only(top: 10, bottom: 6, left: 8, right: 0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('合集 '),
+                      Text(i18n.video.collection),
                       Expanded(
                         child: Text(
-                          ' 正在播放：${videoController.title}',
+                          i18n.video.playingCollection(title: title),
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: 12,
@@ -60,7 +48,7 @@ class _BangumiPanelState extends State<BangumiPanel> {
                         height: 34,
                         child: TextButton(
                           style: ButtonStyle(
-                            padding: MaterialStateProperty.all(EdgeInsets.zero),
+                            padding: WidgetStateProperty.all(EdgeInsets.zero),
                           ),
 
                           // Todo 展示更多
@@ -71,7 +59,7 @@ class _BangumiPanelState extends State<BangumiPanel> {
                                   useAnimation: false,
                                   builder: (context) {
                                     return AlertDialog(
-                                      title: const Text('切换选集'),
+                                      title: Text(i18n.video.changeEpisode),
                                       content: StatefulBuilder(builder:
                                           (BuildContext context,
                                               StateSetter setState) {
@@ -80,29 +68,25 @@ class _BangumiPanelState extends State<BangumiPanel> {
                                           runSpacing: 2,
                                           children: [
                                             for (int i = 1;
-                                                i <=
-                                                    videoController
-                                                        .token.length;
+                                                i <= episodeLength;
                                                 i++) ...<Widget>[
                                               if (i ==
-                                                  videoController
-                                                      .episode) ...<Widget>[
+                                                  currentEpisode) ...<Widget>[
                                                 FilledButton(
                                                   onPressed: () async {
                                                     SmartDialog.dismiss();
                                                   },
                                                   child:
-                                                      Text('第${i.toString()}话'),
+                                                      Text(i18n.toast.currentEpisode(episode: i.toString())),
                                                 ),
                                               ] else ...[
                                                 FilledButton.tonal(
                                                   onPressed: () async {
-                                                    videoController
-                                                        .changeEpisode(i);
+                                                    onChangeEpisode(i);
                                                     SmartDialog.dismiss();
                                                   },
                                                   child:
-                                                      Text('第${i.toString()}话'),
+                                                      Text(i18n.toast.currentEpisode(episode: i.toString())),
                                                 ),
                                               ]
                                             ]
@@ -114,7 +98,7 @@ class _BangumiPanelState extends State<BangumiPanel> {
                             }
                           },
                           child: Text(
-                            '全${videoController.token.length}话',
+                            i18n.video.episodeTotal(total: episodeLength),
                             style: const TextStyle(fontSize: 13),
                           ),
                         ),
@@ -122,91 +106,80 @@ class _BangumiPanelState extends State<BangumiPanel> {
                     ],
                   ),
                 ),
-          SizedBox(
-            height: Platform.isWindows
-                ? 72
-                : (MediaQuery.of(context).size.height -
-                    (MediaQuery.of(context).size.width * 9 / 16) -
-                    100),
+          Expanded(
             // width: Platform.isWindows ? 300: null,
-            child: GridView.builder(
-              controller: listViewScrollCtr,
-              scrollDirection: Axis.vertical, // 将滚动方向改为竖直
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: Platform.isWindows ? 10 : 3,
-                crossAxisSpacing: 10, // 间距
-                mainAxisSpacing: 5, // 间距
-                childAspectRatio: 1.7, // 子项宽高比
-              ),
-              itemCount: videoController.token.length,
-              itemBuilder: (BuildContext context, int i) {
-                return Container(
-                  // width: 150,
-                  margin: const EdgeInsets.only(bottom: 10), // 改为bottom间距
-                  child: Material(
-                    color: Theme.of(context).colorScheme.onInverseSurface,
-                    borderRadius: BorderRadius.circular(6),
-                    clipBehavior: Clip.hardEdge,
-                    child: InkWell(
-                      onTap: () {
-                        changeFucCall(i + 1);
-                      },
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 8, horizontal: 10),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Row(
-                              children: [
-                                if (i ==
-                                    (videoController.episode - 1)) ...<Widget>[
-                                  Image.asset(
-                                    'assets/images/live.png',
-                                    color:
-                                        Theme.of(context).colorScheme.primary,
-                                    height: 12,
+            child: Padding(
+              padding: !Utils.isCompact() ? const EdgeInsets.only(left: 0, right: 0) : const EdgeInsets.only(left: 8.0, right: 8.0),
+              child: GridView.builder(
+                controller: listViewScrollCtr,
+                scrollDirection: Axis.vertical, // 将滚动方向改为竖直
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount:
+                      (!Utils.isCompact() && !Utils.isTablet())
+                          ? 10
+                          : 3,
+                  crossAxisSpacing: 10, // 间距
+                  mainAxisSpacing: 5, // 间距
+                  childAspectRatio: 1.7, // 子项宽高比
+                ),
+                itemCount: episodeLength,
+                itemBuilder: (BuildContext context, int i) {
+                  return Container(
+                    // width: 150,
+                    margin: const EdgeInsets.only(bottom: 10), // 改为bottom间距
+                    child: Material(
+                      color: Theme.of(context).colorScheme.onInverseSurface,
+                      borderRadius: BorderRadius.circular(6),
+                      clipBehavior: Clip.hardEdge,
+                      child: InkWell(
+                        onTap: () {
+                          onChangeEpisode(i + 1);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              vertical: 8, horizontal: 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: <Widget>[
+                              Row(
+                                children: [
+                                  if (i == (currentEpisode - 1)) ...<Widget>[
+                                    Image.asset(
+                                      'assets/images/live.png',
+                                      color:
+                                          Theme.of(context).colorScheme.primary,
+                                      height: 12,
+                                    ),
+                                    const SizedBox(width: 6)
+                                  ],
+                                  Text(
+                                    i18n.toast.currentEpisode(episode: i + 1),
+                                    style: TextStyle(
+                                        fontSize: 13,
+                                        color: i == (currentEpisode - 1)
+                                            ? Theme.of(context)
+                                                .colorScheme
+                                                .primary
+                                            : Theme.of(context)
+                                                .colorScheme
+                                                .onSurface),
                                   ),
-                                  const SizedBox(width: 6)
+                                  const SizedBox(width: 2),
                                 ],
-                                Text(
-                                  '第${i + 1}话',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      color: i == (videoController.episode - 1)
-                                          ? Theme.of(context)
-                                              .colorScheme
-                                              .primary
-                                          : Theme.of(context)
-                                              .colorScheme
-                                              .onSurface),
-                                ),
-                                const SizedBox(width: 2),
-                              ],
-                            ),
-                            const SizedBox(height: 3),
-                            // Todo 为标题准备
-                            // Text(
-                            //   widget.videoController.longTitle!,
-                            //   maxLines: 1,
-                            //   style: TextStyle(
-                            //       fontSize: 13,
-                            //       color: i == videoController.episode
-                            //           ? Theme.of(context).colorScheme.primary
-                            //           : Theme.of(context).colorScheme.onSurface),
-                            //   overflow: TextOverflow.ellipsis,
-                            // )
-                          ],
+                              ),
+                              const SizedBox(height: 3),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                },
+              ),
             ),
           )
         ],
-      );
-    });
+      ),
+    );
   }
 }

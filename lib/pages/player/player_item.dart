@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:oneanime/pages/player/player_controller.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
@@ -22,7 +20,6 @@ class _PlayerItemState extends State<PlayerItem> {
   @override
   void initState() {
     super.initState();
-    // debugPrint('在小部件中初始化');
     // playerController.init;
   }
 
@@ -34,44 +31,36 @@ class _PlayerItemState extends State<PlayerItem> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        // const Text('Video Player Test'),
-        Observer(builder: (context) {
-          return Expanded(
-            child: playerController.dataStatus == 'loaded'
-                ? Video(
-                    controller: playerController.videoController,
-                    controls: NoVideoControls,
-                    subtitleViewConfiguration: SubtitleViewConfiguration(
-                      style: TextStyle(
-                        color: Colors.pink, // 深粉色字体
-                        fontSize: 48.0, // 较大的字号
-                        background: Paint()..color = Colors.transparent, // 背景透明
-                        decoration: TextDecoration.none, // 无下划线
-                        fontWeight: FontWeight.bold, // 字体加粗
-                        shadows: const [
-                          // 显眼的包边
-                          Shadow(
-                            offset: Offset(1.0, 1.0),
-                            blurRadius: 3.0,
-                            color: Color.fromARGB(255, 255, 255, 255),
-                          ),
-                          Shadow(
-                            offset: Offset(-1.0, -1.0),
-                            blurRadius: 3.0,
-                            color: Color.fromARGB(125, 255, 255, 255),
-                          ),
-                        ],
-                      ),
-                      textAlign: TextAlign.center,
-                      padding: const EdgeInsets.all(24.0),
+    return Observer(builder: (context) {
+      return playerController.dataStatus == 'loaded'
+          ? Video(
+              controller: playerController.videoController,
+              controls: NoVideoControls,
+              subtitleViewConfiguration: SubtitleViewConfiguration(
+                style: TextStyle(
+                  color: Colors.pink,
+                  fontSize: 48.0,
+                  background: Paint()..color = Colors.transparent,
+                  decoration: TextDecoration.none,
+                  fontWeight: FontWeight.bold,
+                  shadows: const [
+                    Shadow(
+                      offset: Offset(1.0, 1.0),
+                      blurRadius: 3.0,
+                      color: Color.fromARGB(255, 255, 255, 255),
                     ),
-                  )
-                : const CircularProgressIndicator(),
-          );
-        }),
-      ],
-    );
+                    Shadow(
+                      offset: Offset(-1.0, -1.0),
+                      blurRadius: 3.0,
+                      color: Color.fromARGB(125, 255, 255, 255),
+                    ),
+                  ],
+                ),
+                textAlign: TextAlign.center,
+                padding: const EdgeInsets.all(24.0),
+              ),
+            )
+          : const Center(child: CircularProgressIndicator());
+    });
   }
 }

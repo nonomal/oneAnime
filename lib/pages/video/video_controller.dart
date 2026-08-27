@@ -1,9 +1,6 @@
 import 'dart:async';
-import 'dart:collection';
 import 'package:flutter/material.dart';
 import 'package:mobx/mobx.dart';
-import 'package:oneanime/bean/anime/anime_bangumi_info.dart';
-import 'package:oneanime/bean/anime/anime_info.dart';
 import 'package:oneanime/pages/popular/popular_controller.dart';
 import 'package:oneanime/request/video.dart';
 import 'package:oneanime/pages/player/player_controller.dart';
@@ -21,8 +18,9 @@ abstract class _VideoController with Store {
   @observable
   List<String> token = [];
 
-  int bangumiID = 0;
-  List<String> aniDanmakuToken = [];
+  /// Bumped by every danmaku load; a load holding a stale id lost the race to a
+  /// newer episode and must not write into [danDanmakus].
+  int _danmakuRequestId = 0;
 
   @observable
   Map<int, List<Danmaku>> danDanmakus = {};
@@ -51,16 +49,6 @@ abstract class _VideoController with Store {
   @observable
   bool danmakuOn = false;
 
-  // 界面管理
-  @observable
-  bool showPositioned = false;
-  @observable
-  bool showPosition = false;
-  @observable
-  bool showBrightness = false;
-  @observable
-  bool showVolume = false;
-
   // 视频音量/亮度
   @observable
   double volume = 0;
@@ -71,14 +59,9 @@ abstract class _VideoController with Store {
   @observable
   double playerSpeed = 1.0;
 
-  // 安卓全屏状态
-  @observable
-  bool androidFullscreen = false;
-
   String videoUrl = '';
   String videoCookie = '';
   String title = '';
-  String from = '/tab/popular/';
   int link = 0;
   int offset = 0;
 
@@ -111,79 +94,58 @@ abstract class _VideoController with Store {
     playing = false;
     currentPosition = Duration.zero;
     duration = Duration.zero;
-    try {
-      danDanmakus.clear();
-      getDanDanmaku(title, episode);
-    } catch (e) {
-      debugPrint(e.toString());
-    }
+    // Loading must not block the switch, so an enclosing try/catch cannot help.
+    unawaited(getDanDanmaku(title, episode).catchError((e) {
+      debugPrint('弹幕加载错误 ${e.toString()}');
+    }));
     playerSpeed = 1.0;
     await playerController.init(0);
   }
 
-  Future getAniDanmakuList(String title) async {
-    aniDanmakuToken = await DanmakuRequest.getAniDanmakuList(title);
-  }
-
-  void addDanmakus(List<Danmaku> danmakus) {
-    for (var element in danmakus) {
-      var danmakuList = danDanmakus[element.p.toInt()] ?? List.empty(growable: true);
-      danmakuList.add(element);
-      danDanmakus[element.p.toInt()] = danmakuList;
+  void _addDanmakus(List<Danmaku> danmakus) {
+    for (final danmaku in danmakus) {
+      danDanmakus.putIfAbsent(danmaku.p.toInt(), () => []).add(danmaku);
     }
   }
 
-  Future getDanDanmaku(String title, int episode) async {
-    // 极为糟糕的临时措施，但作者现在就要看高达
-    // if (title.contains('鋼彈')) {
-    //   title = title.replaceAll('鋼彈', '高达');
-    // }
-    bool danmakuEnhance =
-        setting.get(SettingBoxKey.danmakuEnhance, defaultValue: true);
-    bangumiID = await DanmakuRequest.getBangumiID(title);
-    var res = await DanmakuRequest.getDanDanmaku(bangumiID, episode);
-    addDanmakus(res);
-    if (danmakuEnhance && res.length == 0) {
-      final PopularController popularController =
-          Modular.get<PopularController>();
-      try {
-        title = await popularController.chineseTW2S(title);
-        debugPrint('内部翻译结果 $title');
-      } catch (e) {
-        debugPrint('内部翻译错误 ${e.toString()}');
-      }
-      String titleEnhance = '';
-      BangumiInfo? bangumiInfo;
-      try {
-        bangumiInfo = await DanmakuRequest.getBangumiName(title);
-        titleEnhance = bangumiInfo!.nameCN!;
-      } catch (e) {
-        debugPrint("请求Bangumi中文译名错误 ${e.toString()}");
-      }
-      if (titleEnhance != '') {
-        dynamic res = [];
-        if (titleEnhance != title) {
-          bangumiID = await DanmakuRequest.getBangumiID(titleEnhance);
-          res = await DanmakuRequest.getDanDanmaku(bangumiID, episode);
-        } else {
-          debugPrint('中文译名未转换');
-        }
-        if (res.length != 0) {
-          addDanmakus(res);
-        } else {
-          try {
-            titleEnhance = bangumiInfo!.name!;
-          } catch (e) {
-            debugPrint("请求Bangumi日文译名错误 ${e.toString()}");
-          }
-          if (titleEnhance != '') {
-            bangumiID = await DanmakuRequest.getBangumiID(titleEnhance);
-            var res = await DanmakuRequest.getDanDanmaku(bangumiID, episode);
-            addDanmakus(res);
-          }
-        }
-      }
+  Future<void> getDanDanmaku(String title, int episode) async {
+    final int requestId = ++_danmakuRequestId;
+    danDanmakus.clear();
+
+    final int? animeId = await DanmakuRequest.getDandanAnimeId(title);
+    List<Danmaku> res = await _danmakuOf(animeId, episode);
+    if (res.isEmpty &&
+        setting.get(SettingBoxKey.danmakuEnhance, defaultValue: true)) {
+      res = await _danmakuOf(await _bgmAnimeId(title), episode);
     }
+    if (requestId != _danmakuRequestId) {
+      return;
+    }
+    _addDanmakus(res);
     debugPrint('当前弹幕库 ${danDanmakus.length}');
+  }
+
+  Future<List<Danmaku>> _danmakuOf(int? animeId, int episode) async {
+    if (animeId == null) {
+      return [];
+    }
+    return DanmakuRequest.getDanmaku(animeId, episode);
+  }
+
+  /// The 弹弹Play keyword search misses many of the traditional Chinese titles
+  /// Anime1 uses, so resolve those on Bangumi.tv and let 弹弹Play map the
+  /// subject onto its own anime id.
+  Future<int?> _bgmAnimeId(String title) async {
+    String simplified = title;
+    try {
+      simplified = await Modular.get<PopularController>().chineseTW2S(title);
+    } catch (e) {
+      debugPrint('内部翻译错误 ${e.toString()}');
+    }
+    final int? subjectId = await DanmakuRequest.getBgmSubjectId(simplified);
+    if (subjectId == null) {
+      return null;
+    }
+    return DanmakuRequest.getDandanAnimeIdByBgmId(subjectId);
   }
 }

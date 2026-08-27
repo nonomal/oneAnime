@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:oneanime/pages/follow/follow_controller.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
@@ -6,8 +5,8 @@ import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:oneanime/bean/anime/anime_card.dart';
 import 'package:oneanime/pages/menu/menu.dart';
-import 'package:oneanime/pages/menu/side_menu.dart';
 import 'package:oneanime/bean/appbar/sys_app_bar.dart';
+import 'package:oneanime/i18n/strings.g.dart';
 
 class FollowPage extends StatefulWidget {
   const FollowPage({super.key});
@@ -18,7 +17,8 @@ class FollowPage extends StatefulWidget {
 
 class _FollowPageState extends State<FollowPage>
     with AutomaticKeepAliveClientMixin {
-  dynamic navigationBarState;
+  late NavigationBarState navigationBarState;
+  late Translations i18n;
   final ScrollController scrollController = ScrollController();
   final FollowController followController = Modular.get<FollowController>();
 
@@ -28,25 +28,20 @@ class _FollowPageState extends State<FollowPage>
   @override
   void initState() {
     super.initState();
-    debugPrint('Popular 开始初始化');
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // 在widget构建完成后调用的函数
-      navigationBarState = Platform.isWindows
-          ? Provider.of<SideNavigationBarState>(context, listen: false)
-          : Provider.of<NavigationBarState>(context, listen: false);
+      navigationBarState = Provider.of<NavigationBarState>(context, listen: false);
       navigationBarState.showNavigate();
     });
     followController.getFollowList();
     scrollController.addListener(() {
       followController.scrollOffset = scrollController.offset;
     });
-    debugPrint('Follow 监听器已添加');
   }
 
   @override
   void dispose() {
     scrollController.removeListener(() {});
-    debugPrint('popular 模块已卸载, 监听器移除');
     super.dispose();
   }
 
@@ -59,14 +54,15 @@ class _FollowPageState extends State<FollowPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    i18n = Translations.of(context);
     return PopScope(
       canPop: false,
       onPopInvoked: (bool didPop) async {
         onBackPressed(context);
       },
       child: Scaffold(
-        appBar: const SysAppBar(
-          title: Text('追番')
+        appBar: SysAppBar(
+          title: Text(i18n.favorite.title),
         ),
         body: Container(child: animeList),
         floatingActionButton: FloatingActionButton(
@@ -85,20 +81,20 @@ class _FollowPageState extends State<FollowPage>
       return ListView.separated(
         controller: scrollController,
         separatorBuilder: (context, index) => const SizedBox(height: 8.0),
-        itemCount: followController.followList.length == 0
+        itemCount: followController.followList.isEmpty
             ? 1
             : followController.followList.length,
         itemBuilder: (context, index) {
-          return followController.followList.length != 0
+          return followController.followList.isNotEmpty
               ? AnimeInfoCard(
                   info: followController.followList[index], index: index, type: 'follow')
-              : const SizedBox(
+              : SizedBox(
                   height: 600,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('啊咧（⊙.⊙） 没有追番的说'),
+                      Text(i18n.favorite.empty),
                     ],
                   ));
         },

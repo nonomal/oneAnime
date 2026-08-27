@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:flutter/services.dart';
 
 class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
   final double? toolbarHeight;
@@ -10,14 +11,22 @@ class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Color? backgroundColor;
 
   final double? elevation;
-  
+
   final ShapeBorder? shape;
 
   final List<Widget>? actions;
 
   final PreferredSizeWidget? bottom;
 
-  const SysAppBar({super.key, this.toolbarHeight, this.title, this.backgroundColor, this.elevation, this.shape, this.actions, this.bottom});
+  const SysAppBar(
+      {super.key,
+      this.toolbarHeight,
+      this.title,
+      this.backgroundColor,
+      this.elevation,
+      this.shape,
+      this.actions,
+      this.bottom});
 
   @override
   Widget build(BuildContext context) {
@@ -25,22 +34,33 @@ class SysAppBar extends StatelessWidget implements PreferredSizeWidget {
     if (actions != null) {
       acs.addAll(actions!);
     }
-    if (Platform.isWindows || Platform.isLinux) {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       // acs.add(IconButton(onPressed: () => windowManager.minimize(), icon: const Icon(Icons.minimize)));
       acs.add(CloseButton(onPressed: () => windowManager.close()));
     }
     return GestureDetector(
       // behavior: HitTestBehavior.translucent,
-      onPanStart: (_) => windowManager.startDragging(),
+      onPanStart: (_) =>
+          (Platform.isWindows || Platform.isLinux || Platform.isMacOS)
+              ? windowManager.startDragging()
+              : null,
       child: AppBar(
-        toolbarHeight: preferredSize.height,
-        title: title,
-        actions: acs,
-        backgroundColor: backgroundColor,
-        elevation: elevation,
-        shape: shape,
-        bottom: bottom,
-      ),
+          toolbarHeight: preferredSize.height,
+          title: title,
+          actions: acs,
+          backgroundColor: backgroundColor,
+          elevation: elevation,
+          shape: shape,
+          bottom: bottom,
+          systemOverlayStyle: SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            statusBarIconBrightness:
+                Theme.of(context).brightness == Brightness.light
+                    ? Brightness.dark
+                    : Brightness.light,
+            systemNavigationBarColor: Colors.transparent,
+            systemNavigationBarDividerColor: Colors.transparent,
+          )),
     );
   }
 

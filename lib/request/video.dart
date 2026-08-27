@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:oneanime/request/api.dart';
 import 'package:oneanime/request/request.dart';
-import 'package:html/dom.dart';
 import 'package:html/parser.dart' show parse;
 import 'package:dio/dio.dart';
 import 'package:oneanime/utils/utils.dart';
@@ -15,7 +14,7 @@ class VideoRequest {
     try {
       var document = parse(resString);
       final titles = document.getElementsByClassName('page-title');
-      if (titles.length > 0) {
+      if (titles.isNotEmpty) {
         return titles.first.text;
       } else {
         return '';
@@ -45,14 +44,16 @@ class VideoRequest {
     List<String> token = [];
     final res = await Request().get(url);
     String resString = res.data.toString();
+    String firstTitle = '';
     try {
       var document = parse(resString);
       final videoTags = document.getElementsByTagName('video');
-      if (videoTags.length > 0) {
+      if (videoTags.isNotEmpty) {
         for (int i = 0; i < videoTags.length; i++) {
           final element = videoTags[i];
           token.add(element.attributes['data-apireq'] ?? '');
         }
+        firstTitle = document.getElementsByClassName('entry-title').first.text;
         debugPrint('从网页上成功捕获视频凭据 ${token[0]}');
         debugPrint('合集总长度 ${videoTags.length}');
       } else {
@@ -62,10 +63,10 @@ class VideoRequest {
         for (int p = 2; p <= ((token.length / 14).floor() + 1); p++) {
           final link = document.getElementsByClassName('cat-links').first;
           final resNext = await Request()
-              .get(link.nodes[1].attributes['href']! + '/page/$p');
+              .get('${link.nodes[1].attributes['href']!}/page/$p');
           document = parse(resNext.data);
           final videoTags = document.getElementsByTagName('video');
-          if (videoTags.length > 0) {
+          if (videoTags.isNotEmpty) {
             for (int i = 0; i < videoTags.length; i++) {
               final element = videoTags[i];
               token.add(element.attributes['data-apireq'] ?? '');
@@ -76,6 +77,9 @@ class VideoRequest {
             debugPrint('未从网页$p上找到视频源');
           }
         }
+      }
+      if (token.isNotEmpty && firstTitle.endsWith('[01]')) {
+        token = token.reversed.toList();
       }
     } catch (e) {
       debugPrint('其他错误 ${e.toString()}');
@@ -90,10 +94,10 @@ class VideoRequest {
     var result = {};
     List<String> cookies = [];
     final res = await Request().post(Api.videoAPI,
-        data: 'd=' + token,
+        data: 'd=$token',
         options: Options(contentType: 'application/x-www-form-urlencoded'));
     try {
-      link = 'https:' + res.data['s'][0]['src'].toString();
+      link = 'https:${res.data['s'][0]['src']}';
       cookies = res?.headers['set-cookie'];
       debugPrint('用于视频验权的cookie为 ${Utils.videoCookieC(cookies)}');
     } catch (e) {

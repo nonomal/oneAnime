@@ -1,13 +1,10 @@
-import 'dart:io';
 import 'package:oneanime/pages/history/history_controller.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:oneanime/bean/anime/anime_card.dart';
-import 'package:oneanime/pages/menu/menu.dart';
-import 'package:oneanime/pages/menu/side_menu.dart';
 import 'package:oneanime/bean/appbar/sys_app_bar.dart';
+import 'package:oneanime/i18n/strings.g.dart'; 
 
 class HistoryPage extends StatefulWidget {
   const HistoryPage({super.key});
@@ -18,7 +15,7 @@ class HistoryPage extends StatefulWidget {
 
 class _HistoryPageState extends State<HistoryPage>
     with AutomaticKeepAliveClientMixin {
-  dynamic navigationBarState;
+  late Translations i18n;
   final ScrollController scrollController = ScrollController();
   final HistoryController historyController = Modular.get<HistoryController>();
 
@@ -28,44 +25,27 @@ class _HistoryPageState extends State<HistoryPage>
   @override
   void initState() {
     super.initState();
-    debugPrint('Popular 开始初始化');
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      // 在widget构建完成后调用的函数
-      navigationBarState = Platform.isWindows
-          ? Provider.of<SideNavigationBarState>(context, listen: false)
-          : Provider.of<NavigationBarState>(context, listen: false);
-      navigationBarState.showNavigate();
-    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {});
     historyController.getHistoryList();
     scrollController.addListener(() {
       historyController.scrollOffset = scrollController.offset;
     });
-    debugPrint('History 监听器已添加');
   }
 
   @override
   void dispose() {
     scrollController.removeListener(() {});
-    debugPrint('history 模块已卸载, 监听器移除');
     super.dispose();
-  }
-
-  void onBackPressed(BuildContext context) {
-    Modular.to.navigate('/tab/my/');
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    i18n = Translations.of(context);
     return PopScope(
-      canPop: false,
-      onPopInvoked: (bool didPop) async {
-        onBackPressed(context);
-      },
+      canPop: true,
       child: Scaffold(
-        appBar: const SysAppBar(
-          title: Text('历史记录')
-        ),
+        appBar: SysAppBar(title: Text(i18n.my.history.title)),
         body: Container(child: animeList),
         floatingActionButton: FloatingActionButton(
           onPressed: () {
@@ -84,21 +64,24 @@ class _HistoryPageState extends State<HistoryPage>
       return ListView.separated(
         controller: scrollController,
         separatorBuilder: (context, index) => const SizedBox(height: 8.0),
-        itemCount: historyController.historyList.length == 0
+        itemCount: historyController.historyList.isEmpty
             ? 1
             : historyController.historyList.length,
         itemBuilder: (context, index) {
           // 倒序
-          return historyController.historyList.length != 0
+          return historyController.historyList.isNotEmpty
               ? AnimeInfoCard(
-                  info: historyController.historyList[historyController.historyList.length - index -1], index: historyController.historyList.length - index -1, type: 'history')
-              : const SizedBox(
+                  info: historyController.historyList[
+                      historyController.historyList.length - index - 1],
+                  index: historyController.historyList.length - index - 1,
+                  type: 'history')
+              : SizedBox(
                   height: 600,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('啊咧（⊙.⊙） 没有观看记录的说'),
+                      Text(i18n.my.history.empty),
                     ],
                   ));
         },

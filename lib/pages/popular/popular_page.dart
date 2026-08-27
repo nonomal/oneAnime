@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:oneanime/pages/popular/popular_controller.dart';
@@ -7,7 +6,9 @@ import 'package:oneanime/bean/anime/anime_card.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:flutter/services.dart';
 import 'package:oneanime/bean/appbar/sys_app_bar.dart';
+import 'package:oneanime/utils/utils.dart';
 import 'package:window_manager/window_manager.dart';
+import 'package:oneanime/i18n/strings.g.dart';
 
 class PopularPage extends StatefulWidget {
   const PopularPage({super.key});
@@ -20,6 +21,7 @@ class _PopularPageState extends State<PopularPage>
     with AutomaticKeepAliveClientMixin {
   DateTime? _lastPressedAt;
   bool showArrowUp = false;
+  late Translations i18n;
   final FocusNode _focusNode = FocusNode();
   final TextEditingController _controller = TextEditingController();
   final ScrollController scrollController = ScrollController();
@@ -31,27 +33,25 @@ class _PopularPageState extends State<PopularPage>
   @override
   void initState() {
     super.initState();
-    debugPrint('Popular 开始初始化');
-    if (popularController.cacheList.length == 0) {
-      debugPrint('页面列表尝试重新加载');
+    if (popularController.cacheList.isEmpty) {
+      debugPrint('Popular list is empty, loading...');
       popularController.getAnimeList();
     }
-    debugPrint('动画缓存列表长度为 ${popularController.list.length}');
+    debugPrint('The length of anime list is ${popularController.list.length}');
     scrollController.addListener(() {
       popularController.scrollOffset = scrollController.offset;
       if (scrollController.position.pixels >=
               scrollController.position.maxScrollExtent - 200 &&
           popularController.isLoadingMore == false &&
           popularController.keyword == '') {
-        debugPrint('Popular 正在加载更多');
+        debugPrint('Popular list loading more');
         popularController.isLoadingMore = true;
         popularController.onLoad();
       }
-      if (Platform.isWindows) {
+      if (!Utils.isCompact()) {
         checkArrowUp();
       }
     });
-    debugPrint('Popular 监听器已添加');
   }
 
   @override
@@ -61,7 +61,6 @@ class _PopularPageState extends State<PopularPage>
       popularController.filterList('');
       popularController.scrollOffset = 0.0;
     }
-    debugPrint('popular 模块已卸载, 监听器移除');
     super.dispose();
   }
 
@@ -75,9 +74,8 @@ class _PopularPageState extends State<PopularPage>
     if (_lastPressedAt == null ||
         DateTime.now().difference(_lastPressedAt!) >
             const Duration(seconds: 2)) {
-      // 两次点击时间间隔超过2秒，重新记录时间戳
       _lastPressedAt = DateTime.now();
-      SmartDialog.showToast("再按一次退出应用");
+      SmartDialog.showToast(i18n.toast.exitApp);
       return;
     }
     SystemNavigator.pop(); // 退出应用
@@ -99,10 +97,9 @@ class _PopularPageState extends State<PopularPage>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    i18n = Translations.of(context);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      debugPrint('尝试恢复状态');
       scrollController.jumpTo(popularController.scrollOffset);
-      debugPrint('Popular加载完成');
     });
     return PopScope(
       canPop: false,
@@ -113,9 +110,7 @@ class _PopularPageState extends State<PopularPage>
         onRefresh: () async {
           if (popularController.keyword == '' &&
               popularController.isLoadingMore == false) {
-            popularController.isLoadingMore == true;
             await popularController.getAnimeList();
-            popularController.isLoadingMore == false;
           }
         },
         child: Scaffold(
@@ -130,19 +125,18 @@ class _PopularPageState extends State<PopularPage>
                   focusNode: _focusNode,
                   controller: _controller,
                   style: const TextStyle(color: Colors.white, fontSize: 20),
-                  decoration: const InputDecoration(
-                    hintText: '快速搜索',
-                    hintStyle: TextStyle(color: Colors.white, fontSize: 20),
+                  decoration: InputDecoration(
+                    hintText: i18n.popular.searchBar,
+                    hintStyle: const TextStyle(color: Colors.white, fontSize: 20),
                     border: InputBorder.none,
-                    prefixIcon: Icon(Icons.search, color: Colors.white),
+                    prefixIcon: const Icon(Icons.search, color: Colors.white),
                   ),
                   autocorrect: false,
                   autofocus: false,
                   onTap: () {
                     setState(() {
                       _focusNode.requestFocus();
-                      // 添加动效
-                      _controller.clear(); // 如果需要清空文本字段内容
+                      _controller.clear(); 
                     });
                   },
                   onChanged: (t) {
@@ -160,7 +154,7 @@ class _PopularPageState extends State<PopularPage>
               ],
             ),
             elevation: 0, // 移除阴影效果
-            shape: Platform.isWindows
+            shape: !Utils.isCompact()
                 ? const RoundedRectangleBorder(
                     // 添加圆角
                     borderRadius: BorderRadius.vertical(
@@ -171,7 +165,7 @@ class _PopularPageState extends State<PopularPage>
                 : null,
           ),
           body: Container(child: animeList),
-          floatingActionButton: Platform.isWindows
+          floatingActionButton: !Utils.isCompact()
               ? Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -182,20 +176,20 @@ class _PopularPageState extends State<PopularPage>
                           scrollController.jumpTo(0.0);
                           popularController.scrollOffset = 0.0;
                         },
+                        heroTag: null,
                         child: const Icon(Icons.arrow_upward),
                       ),
                     ),
                     const Padding(
                       padding: EdgeInsets.only(
-                          left: 10.0), // Adjust padding as needed
+                          left: 10.0), 
                     ),
                     FloatingActionButton(
                       onPressed: () async {
-                        popularController.isLoadingMore == true;
                         await popularController.getAnimeList();
-                        popularController.isLoadingMore == false;
-                        SmartDialog.showToast('列表更新完成');
+                        SmartDialog.showToast(i18n.toast.refreshAnimeListWithSuccess);
                       },
+                      heroTag: null,
                       child: const Icon(Icons.refresh),
                     ),
                   ],
@@ -205,6 +199,7 @@ class _PopularPageState extends State<PopularPage>
                     scrollController.jumpTo(0.0);
                     popularController.scrollOffset = 0.0;
                   },
+                  heroTag: null,
                   child: const Icon(Icons.arrow_upward),
                 ),
         ),
@@ -217,11 +212,11 @@ class _PopularPageState extends State<PopularPage>
       return ListView.separated(
         controller: scrollController,
         separatorBuilder: (context, index) => const SizedBox(height: 8.0),
-        itemCount: popularController.cacheList.length == 0
+        itemCount: popularController.cacheList.isEmpty
             ? 1
             : popularController.cacheList.length,
         itemBuilder: (context, index) {
-          return popularController.cacheList.length != 0
+          return popularController.cacheList.isNotEmpty
               ? AnimeInfoCard(
                   info: popularController.cacheList[index],
                   index: index,
@@ -236,13 +231,13 @@ class _PopularPageState extends State<PopularPage>
                           CircularProgressIndicator(),
                         ],
                       ))
-                  : const SizedBox(
+                  : SizedBox(
                       height: 600,
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.center,
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text('空空如也 >_<'),
+                          Text(i18n.popular.empty),
                         ],
                       )));
         },

@@ -8,6 +8,7 @@ import 'package:oneanime/pages/popular/popular_controller.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:oneanime/bean/appbar/sys_app_bar.dart';
 import 'package:oneanime/request/request.dart';
+import 'package:oneanime/i18n/strings.g.dart';
 
 class OtherSettingsPage extends StatefulWidget {
   const OtherSettingsPage({super.key});
@@ -23,6 +24,7 @@ class _OtherSettingsPageState extends State<OtherSettingsPage> {
   late bool enableSystemProxy;
   late String defaultSystemProxyHost;
   late String defaultSystemProxyPort;
+  late Translations i18n;
   final PopularController popularController = Modular.get<PopularController>();
 
   @override
@@ -30,10 +32,6 @@ class _OtherSettingsPageState extends State<OtherSettingsPage> {
     super.initState();
     enableSystemProxy =
         setting.get(SettingBoxKey.enableSystemProxy, defaultValue: false);
-  }
-
-  void onBackPressed(BuildContext context) {
-    Modular.to.navigate('/tab/my/');
   }
 
   // 设置代理
@@ -50,7 +48,7 @@ class _OtherSettingsPageState extends State<OtherSettingsPage> {
       useAnimation: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('设置代理'),
+          title: Text(i18n.my.otherSettings.proxySettings),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -60,7 +58,7 @@ class _OtherSettingsPageState extends State<OtherSettingsPage> {
                   isDense: true,
                   labelText: defaultSystemProxyHost != ''
                       ? defaultSystemProxyHost
-                      : '请输入Host, 使用 . 分割',
+                      : i18n.my.otherSettings.proxyHost,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(6.0),
                   ),
@@ -77,7 +75,7 @@ class _OtherSettingsPageState extends State<OtherSettingsPage> {
                   isDense: true,
                   labelText: defaultSystemProxyPort != ''
                       ? defaultSystemProxyPort
-                      : '请输入Port',
+                      : i18n.my.otherSettings.proxyPort,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(6.0),
                   ),
@@ -95,7 +93,7 @@ class _OtherSettingsPageState extends State<OtherSettingsPage> {
                 SmartDialog.dismiss();
               },
               child: Text(
-                '取消',
+                i18n.dialog.dismiss,
                 style: TextStyle(color: Theme.of(context).colorScheme.outline),
               ),
             ),
@@ -116,7 +114,7 @@ class _OtherSettingsPageState extends State<OtherSettingsPage> {
                   Request.setProxy();
                 }
               },
-              child: const Text('确认'),
+              child: Text(i18n.dialog.confirm),
             )
           ],
         );
@@ -126,64 +124,55 @@ class _OtherSettingsPageState extends State<OtherSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return PopScope(
-      canPop: false,
-      onPopInvoked: (bool didPop) async {
-        onBackPressed(context);
-      },
-      child: Scaffold(
-        appBar: const SysAppBar(title: Text('设置')),
-        body: Column(
-          children: [
-            (popularController.libopencc != '' || !Platform.isWindows)
-                ? const InkWell(
-                    child: SetSwitchItem(
-                      title: '搜索优化',
-                      subTitle: '自动翻译关键词',
-                      setKey: SettingBoxKey.searchEnhanceEnable,
-                      defaultVal: true,
-                    ),
-                  )
-                : Container(),
-            ListTile(
-              enableFeedback: true,
-              onTap: () => twoFADialog(),
-              title: const Text('配置代理'),
-              trailing: Transform.scale(
-                alignment: Alignment.centerRight,
-                scale: 0.8,
-              ),
+    i18n = Translations.of(context);
+    return Scaffold(
+      appBar: SysAppBar(title: Text(i18n.my.otherSettings.title)),
+      body: Column(
+        children: [
+          (popularController.libopencc != '' ||
+                  Platform.isAndroid ||
+                  Platform.isIOS)
+              ? InkWell(
+                  child: SetSwitchItem(
+                    title: i18n.my.otherSettings.searchEnhace,
+                    subTitle: i18n.my.otherSettings.searchEnhaceSubtitle,
+                    setKey: SettingBoxKey.searchEnhanceEnable,
+                    defaultVal: true,
+                  ),
+                )
+              : Container(),
+          ListTile(
+            enableFeedback: true,
+            onTap: () => twoFADialog(),
+            title: Text(i18n.my.otherSettings.proxySettings),
+            trailing: Transform.scale(
+              alignment: Alignment.centerRight,
+              scale: 0.8,
             ),
-            InkWell(
-              child: SetSwitchItem(
-                title: '启用代理',
-                callFn: (_) {
-                  enableSystemProxy = !enableSystemProxy;
-                  if (enableSystemProxy) {
-                    Request.setProxy();
-                  } else {
-                    Request.disableProxy();
-                  }
-                },
-                setKey: SettingBoxKey.enableSystemProxy,
-                defaultVal: false,
-              ),
+          ),
+          InkWell(
+            child: SetSwitchItem(
+              title: i18n.my.otherSettings.proxyEnable,
+              callFn: (_) {
+                enableSystemProxy = !enableSystemProxy;
+                if (enableSystemProxy) {
+                  Request.setProxy();
+                } else {
+                  Request.disableProxy();
+                }
+              },
+              setKey: SettingBoxKey.enableSystemProxy,
+              defaultVal: false,
             ),
-            const InkWell(
-              child: SetSwitchItem(
-                title: '自动更新',
-                setKey: SettingBoxKey.autoUpdate,
-                defaultVal: false,
-              ),
-            )
-          ],
-        ),
+          ),
+          InkWell(
+            child: SetSwitchItem(
+              title: i18n.my.otherSettings.autoUpdate,
+              setKey: SettingBoxKey.autoUpdate,
+              defaultVal: false,
+            ),
+          )
+        ],
       ),
     );
   }

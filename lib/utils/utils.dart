@@ -1,8 +1,52 @@
+import 'dart:io';
+import 'dart:math';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:oneanime/request/api.dart';
+import 'package:oneanime/utils/constans.dart';
+import 'package:device_info_plus/device_info_plus.dart';
+import 'package:window_manager/window_manager.dart';
+import 'package:crypto/crypto.dart';
+import 'package:oneanime/utils/mortis.dart';
+import 'package:path_provider/path_provider.dart';
 
 class Utils {
+  static Future<bool> isLowResolution() async {
+    if (Platform.isMacOS) {
+      return false;
+    }
+    Map<String, double> screenInfo = await getScreenInfo();
+    if (screenInfo['height']! / screenInfo['ratio']! < 900) {
+      return true;
+    }
+    return false;
+  }
+
+
+  static String getRandomUA() {
+    final random = Random();
+    String randomElement =
+        userAgentsList[random.nextInt(userAgentsList.length)];
+    return randomElement;
+  }
+
+  static Future<Map<String, double>> getScreenInfo() async {
+    final MediaQueryData mediaQuery = MediaQueryData.fromView(
+        WidgetsBinding.instance.platformDispatcher.views.first);
+    final Size screenSize =
+        WidgetsBinding.instance.platformDispatcher.displays.first.size;
+    final double screenRatio = mediaQuery.devicePixelRatio;
+    Map<String, double>? screenInfo = {};
+    screenInfo = {
+      'width': screenSize.width,
+      'height': screenSize.height,
+      'ratio': screenRatio
+    };
+    return screenInfo;
+  }
+
   static videoCookieC(List<String> baseCookies) {
     String finalCookie = '';
     String baseCookieString = baseCookies.join('; ');
@@ -13,8 +57,7 @@ class Utils {
             cookieParts[0] == 'p' ||
             cookieParts[0] == 'h' ||
             cookieParts[0].startsWith('_ga')) {
-          finalCookie =
-              finalCookie + cookieParts[0] + '=' + cookieParts[1] + '; ';
+          finalCookie = '$finalCookie${cookieParts[0]}=${cookieParts[1]}; ';
         }
       }
     });
@@ -28,8 +71,6 @@ class Utils {
       colorScheme: defaultDarkTheme.colorScheme.copyWith(
         onPrimary: Colors.black,
         onSecondary: Colors.black,
-        background: Colors.black,
-        onBackground: Colors.black,
         surface: Colors.black,
         onSurface: Colors.white,
       ),
@@ -54,5 +95,91 @@ class Utils {
     } catch (e) {
       return Api.version;
     }
+  }
+
+  /// 判断是否为桌面设备
+  static bool isDesktop() {
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      return true;
+    }
+    return false;
+  }
+
+  /// 判断设备是否为宽屏
+  static bool isWideScreen() {
+    final MediaQueryData mediaQuery = MediaQueryData.fromView(
+        WidgetsBinding.instance.platformDispatcher.views.first);
+    final bool isWideScreen = mediaQuery.size.shortestSide >= 600 &&
+        mediaQuery.size.shortestSide / mediaQuery.size.longestSide >= 9 / 16;
+    return isWideScreen;
+  }
+
+
+  /// 判断设备是否为平板
+  static bool isTablet() {
+    return isWideScreen() && !isDesktop();
+  }
+
+  /// 判断设备是否需要紧凑布局
+  static bool isCompact() {
+    return !isDesktop() && !isWideScreen();
+  }
+
+  /// Window fullscreen on desktop, system bars on mobile.
+  /// Screen orientation is the caller's business.
+  static Future<void> setFullScreen(bool fullscreen) async {
+    if (isDesktop()) {
+      await windowManager.setFullScreen(fullscreen);
+      return;
+    }
+    try {
+      if (fullscreen) {
+        await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+        return;
+      }
+      SystemUiMode mode = SystemUiMode.edgeToEdge;
+      if (Platform.isAndroid &&
+          (await DeviceInfoPlugin().androidInfo).version.sdkInt < 29) {
+        mode = SystemUiMode.manual;
+      }
+      await SystemChrome.setEnabledSystemUIMode(
+        mode,
+        overlays: SystemUiOverlay.values,
+      );
+    } catch (exception, stacktrace) {
+      debugPrint(exception.toString());
+      debugPrint(stacktrace.toString());
+    }
+  }
+
+  static Future<void> landScape() async {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+  }
+
+  static Future<void> verticalScreen() async {
+    await SystemChrome.setPreferredOrientations([
+      DeviceOrientation.portraitUp,
+    ]);
+  }
+
+  static Future<void> unlockOrientation() async {
+    await SystemChrome.setPreferredOrientations([]);
+  }
+
+  static String generateDandanSignature(String path, int timestamp) {
+    String id = mortis['id']!;
+    String value = mortis['value']!;
+    String data = id + timestamp.toString() + path + value;
+    var bytes = utf8.encode(data);
+    var digest = sha256.convert(bytes);
+    return base64Encode(digest.bytes);
+  }
+
+  static Future<String> getPlayerTempPath() async {
+    final directory = await getTemporaryDirectory();
+    return directory.path;
   }
 }

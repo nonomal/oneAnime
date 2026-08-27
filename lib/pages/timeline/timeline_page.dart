@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_mobx/flutter_mobx.dart';
 import 'package:flutter_modular/flutter_modular.dart';
@@ -10,11 +9,9 @@ import 'package:oneanime/pages/popular/popular_controller.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:oneanime/pages/menu/menu.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
-import 'package:oneanime/pages/menu/side_menu.dart';
-import 'package:oneanime/bean/anime/anime_sesson.dart';
 import 'package:oneanime/bean/anime/anime_history.dart';
 import 'package:oneanime/pages/history/history_controller.dart';
+import 'package:oneanime/i18n/strings.g.dart';
 
 class TimelinePage extends StatefulWidget {
   const TimelinePage({super.key});
@@ -30,7 +27,8 @@ class _TimelinePageState extends State<TimelinePage>
   final VideoController videoController = Modular.get<VideoController>();
   final PopularController popularController = Modular.get<PopularController>();
   final HistoryController historyController = Modular.get<HistoryController>();
-  dynamic navigationBarState;
+  late NavigationBarState navigationBarState;
+  late Translations i18n;
   TabController? controller;
 
   @override
@@ -39,16 +37,14 @@ class _TimelinePageState extends State<TimelinePage>
     int weekday = DateTime.now().weekday - 1;
     controller =
         TabController(vsync: this, length: tabs.length, initialIndex: weekday);
-    if (timelineController.schedules.length == 0) {
-      debugPrint('时间表缓存为空, 尝试重新加载');
+    if (timelineController.schedules.isEmpty) {
+      debugPrint('timeline list is empty, try load again');
       timelineController.getSchedules();
     }
   }
 
   void onBackPressed(BuildContext context) {
-    navigationBarState = Platform.isWindows
-        ? Provider.of<SideNavigationBarState>(context, listen: false)
-        : Provider.of<NavigationBarState>(context, listen: false);
+    navigationBarState = Provider.of<NavigationBarState>(context, listen: false);
     navigationBarState.showNavigate();
     navigationBarState.updateSelectedIndex(0);
     Modular.to.navigate('/tab/popular/');
@@ -81,6 +77,7 @@ class _TimelinePageState extends State<TimelinePage>
 
   @override
   Widget build(BuildContext context) {
+    i18n = Translations.of(context);
     return Observer(builder: (context) {
       return PopScope(
         canPop: false,
@@ -102,7 +99,7 @@ class _TimelinePageState extends State<TimelinePage>
                     useAnimation: false,
                     builder: (context) {
                       return AlertDialog(
-                        title: const Text('时间机器'),
+                        title: Text(i18n.dialog.timeMachine),
                         content: StatefulBuilder(builder:
                             (BuildContext context, StateSetter setState) {
                           return Wrap(
@@ -178,14 +175,14 @@ class _TimelinePageState extends State<TimelinePage>
   }
 
   Widget get renderBody {
-    if (timelineController.schedules.length > 0) {
+    if (timelineController.schedules.isNotEmpty) {
       return TabBarView(
         controller: controller,
         children: renderSchedule(),
       );
     } else {
-      return const Center(
-        child: Text('數據還沒有更新 (´;ω;`)'),
+      return Center(
+        child: Text(i18n.calendar.empty),
       );
     }
   }
@@ -205,7 +202,7 @@ class _TimelinePageState extends State<TimelinePage>
                 onTap: () async {
                   // It might be null
                   if (item.link != null) {
-                    SmartDialog.showLoading(msg: '获取中');
+                    SmartDialog.showLoading(msg: i18n.toast.loading);
                     try {
                       AnimeInfo? animeInfo =
                           popularController.lookupAnime(item.name ?? "");
@@ -229,21 +226,16 @@ class _TimelinePageState extends State<TimelinePage>
                       await popularController.getVideoLink(item.link ?? '');
                     } catch (_) {
                       SmartDialog.dismiss();
-                      SmartDialog.showToast('获取剧集失败 errcode: 404');
+                      SmartDialog.showToast('errcode: 404');
                       return;
                     }
                     videoController.title = item.name ?? '';
                     SmartDialog.dismiss();
-                    navigationBarState = Platform.isWindows
-                        ? Provider.of<SideNavigationBarState>(context,
-                            listen: false)
-                        : Provider.of<NavigationBarState>(context,
+                    navigationBarState = Provider.of<NavigationBarState>(context,
                             listen: false);
-                    navigationBarState.hideNavigate();
-                    videoController.from = '/tab/timeline/';
-                    Modular.to.navigate('/tab/video/');
+                    Modular.to.pushNamed('/video/');
                   } else {
-                    SmartDialog.showToast('動畫還沒有更新第一集 >_<', displayType: SmartToastType.last);
+                    SmartDialog.showToast(i18n.toast.animeNotExist, displayType: SmartToastType.onlyRefresh);
                   }
                 },
                 child: Align(
@@ -261,7 +253,6 @@ class _TimelinePageState extends State<TimelinePage>
                 ),
               ),
             );
-            ;
           },
         ),
       ));

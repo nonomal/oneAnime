@@ -1,17 +1,13 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_modular/flutter_modular.dart';
-import 'package:oneanime/pages/menu/side_menu.dart';
 import 'package:provider/provider.dart';
 import 'package:oneanime/pages/menu/menu.dart';
-import 'package:oneanime/request/api.dart';
 import 'package:oneanime/utils/storage.dart';
-import 'package:oneanime/pages/my/my_controller.dart';
 import 'package:hive/hive.dart';
 import 'package:oneanime/pages/popular/popular_controller.dart';
 import 'package:oneanime/bean/appbar/sys_app_bar.dart';
 import 'package:oneanime/bean/settings/settings.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:oneanime/i18n/strings.g.dart';
 
 class MyPage extends StatefulWidget {
   const MyPage({super.key});
@@ -21,22 +17,19 @@ class MyPage extends StatefulWidget {
 }
 
 class _MyPageState extends State<MyPage> {
-  dynamic navigationBarState;
+  late NavigationBarState navigationBarState;
+  late Translations i18n;
   Box setting = GStorage.setting;
   late dynamic defaultDanmakuArea;
   late dynamic defaultThemeMode;
   late dynamic defaultThemeColor;
-  final _mineController = Modular.get<MyController>();
   final PopularController popularController = Modular.get<PopularController>();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      // 在widget构建完成后调用的函数
-      navigationBarState = Platform.isWindows
-          ? Provider.of<SideNavigationBarState>(context, listen: false)
-          : Provider.of<NavigationBarState>(context, listen: false);
+      navigationBarState = Provider.of<NavigationBarState>(context, listen: false);
       navigationBarState.showNavigate();
     });
   }
@@ -49,75 +42,70 @@ class _MyPageState extends State<MyPage> {
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
+    i18n = Translations.of(context);
     return PopScope(
       canPop: false,
       onPopInvoked: (bool didPop) async {
         onBackPressed(context);
       },
       child: Scaffold(
-        appBar: const SysAppBar(title: Text('我的')),
+        appBar: SysAppBar(title: Text(i18n.menu.my)),
         body: Column(
           children: [
-            const InkWell(
+            InkWell(
               child: SetSwitchItem(
-                title: '隐身模式',
-                subTitle: '不保留观看记录',
+                title: i18n.my.private,
+                subTitle: i18n.my.privateSubtitle,
                 setKey: SettingBoxKey.privateMode,
                 defaultVal: false,
               ),
             ),
             ListTile(
               onTap: () async {
-                Modular.to.pushNamed('/tab/history/');
+                Modular.to.pushNamed('/history/');
               },
               dense: false,
-              title: const Text('历史记录'),
+              title: Text(i18n.my.history.title),
               // trailing: const Icon(Icons.navigate_next),
             ),
             ListTile(
               onTap: () async {
-                Modular.to.pushNamed('/tab/my/player');
+                Modular.to.pushNamed('/settings/player');
               },
               dense: false,
-              title: const Text('播放设置'),
+              title: Text(i18n.my.playerSettings.title),
               // trailing: const Icon(Icons.navigate_next),
             ),
             ListTile(
               onTap: () async {
-                Modular.to.pushNamed('/tab/my/danmaku');
+                Modular.to.pushNamed('/settings/danmaku');
               },
               dense: false,
-              title: const Text('弹幕设置'),
+              title: Text(i18n.my.danmakuSettings.title),
               // trailing: const Icon(Icons.navigate_next),
             ),
             ListTile(
               onTap: () async {
-                Modular.to.pushNamed('/tab/my/theme');
+                Modular.to.pushNamed('/settings/theme');
               },
               dense: false,
-              title: const Text('外观设置'),
+              title: Text(i18n.my.themeSettings.title),
               // trailing: const Icon(Icons.navigate_next),
             ),
             ListTile(
               onTap: () async {
-                Modular.to.pushNamed('/tab/my/other');
+                Modular.to.pushNamed('/settings/other');
               },
               dense: false,
-              title: const Text('其他设置'),
+              title: Text(i18n.my.otherSettings.title),
               // trailing: const Icon(Icons.navigate_next),
             ),
             ListTile(
               onTap: () {
-                Modular.to.pushNamed('/tab/my/about');
+                Modular.to.pushNamed('/settings/about');
               },
               dense: false,
-              title: const Text('关于'),
+              title: Text(i18n.my.about.title),
             ),
           ],
         ),

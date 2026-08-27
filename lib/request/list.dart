@@ -1,48 +1,56 @@
-import 'dart:convert';
 import 'package:oneanime/request/api.dart';
 import 'package:oneanime/request/request.dart';
 import 'package:oneanime/bean/anime/anime_info.dart';
 import 'package:flutter/material.dart';
 import 'package:oneanime/bean/anime/anime_sesson.dart';
-import 'package:html/dom.dart';
 import 'package:oneanime/utils/storage.dart';
 import 'package:html/parser.dart' show parse;
 import 'package:oneanime/bean/anime/anime_schedule.dart';
 import 'package:flutter_modular/flutter_modular.dart';
 import 'package:oneanime/pages/timeline/timeline_controller.dart';
 import 'package:oneanime/pages/popular/popular_controller.dart';
-import 'package:oneanime/bean/danmaku/danmaku_module.dart';
 
 class ListRequest {
+  static List<AnimeInfo> parseAnimeList(dynamic data) {
+    if (data is! List) {
+      return [];
+    }
+
+    final List<AnimeInfo> animeList = [];
+    for (final item in data) {
+      // Anime1 uses ID 0 for entries hosted on its adult site.
+      if (item is List &&
+          item.length >= 6 &&
+          item[0] is int &&
+          item[0] > 0 &&
+          item.sublist(1, 6).every((field) => field is String)) {
+        animeList.add(AnimeInfo.fromList(item));
+      }
+    }
+    return animeList;
+  }
+
   static Future getAnimeList() async {
-    bool needFix = false;
-    List<AnimeInfo> list = [];
     List<AnimeInfo> newList = [];
     final res = await Request().get(Api.animeList);
     final resJson = res.data;
-    if (resJson is List) {
-      resJson.forEach((item) {
-        // 0 means that it is 🔞
-        if (item is List && item[0] > 0) {
-          list.add(AnimeInfo.fromList(item));
-        }
-      });
-    } else {
+    final List<AnimeInfo> list = parseAnimeList(resJson);
+    if (resJson is! List) {
       debugPrint('非法的Json ${res.toString()}');
     }
-    
+
     final PopularController popularController =
         Modular.get<PopularController>();
 
-    if (list.length != 0) {
+    if (list.isNotEmpty) {
       List<AnimeInfo> oldlist = popularController.list;
 
       debugPrint('检测到远方番剧数据库变动');
       newList.clear();
       newList.addAll(list);
       for (var oldAnime in oldlist) {
-        var index = newList
-            .indexWhere((newAnime) => newAnime.name == oldAnime.name);
+        var index =
+            newList.indexWhere((newAnime) => newAnime.name == oldAnime.name);
         if (index != -1) {
           newList[index].follow = oldAnime.follow;
           newList[index].progress = oldAnime.progress;
@@ -68,7 +76,7 @@ class ListRequest {
 
   static Future getAnimeScedule(DateTime selectedDate) async {
     List<AnimeSchedule> schedules = [];
-    final season = AnimeSeason(selectedDate).toString(); 
+    final season = AnimeSeason(selectedDate).toString();
     final link = Api.domain + season;
 
     final TimelineController timelineController =
@@ -78,22 +86,21 @@ class ListRequest {
     debugPrint('时间表链接为 $link');
     final res = await Request().get(link);
     String resString = res.data;
-    // debugPrint('从服务器获得的全链接响应 $resString');
     try {
       var document = parse(resString);
       final tables = document.getElementsByTagName('table');
       final tbody = tables.first.nodes[1];
-      tbody.nodes.forEach((tr) {
+      for (var tr in tbody.nodes) {
         // anime1.me is also one line (so check the length to prevent it)
         if (tr.nodes.length > 1) {
           // It is in order so use an index to indicate the date
           int i = 0;
-          tr.nodes.forEach((td) {
-            AnimeSchedule t = new AnimeSchedule(td, i++);
+          for (var td in tr.nodes) {
+            AnimeSchedule t = AnimeSchedule(td, i++);
             if (t.valid()) schedules.add(t);
-          });
+          }
         }
-      });
+      }
 
       return schedules;
     } catch (e) {

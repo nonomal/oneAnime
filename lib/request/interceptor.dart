@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 
 class ApiInterceptor extends Interceptor {
@@ -9,55 +10,67 @@ class ApiInterceptor extends Interceptor {
   }
 
   @override
-  void onResponse(Response response, ResponseInterceptorHandler handler) {    
+  void onResponse(Response response, ResponseInterceptorHandler handler) {
     handler.next(response);
   }
 
   @override
   void onError(DioException err, ErrorInterceptorHandler handler) async {
+    String url = err.requestOptions.uri.toString();
+    if (!url.contains('heartBeat')) {
+      SmartDialog.showToast(
+        await dioError(err),
+        displayType: SmartToastType.onlyRefresh,
+      );
+    }
     super.onError(err, handler);
+    // super.onError(err, handler);
   }
 
   static Future<String> dioError(DioException error) async {
     switch (error.type) {
       case DioExceptionType.badCertificate:
-        return '证书有误！';
+        return 'Certificate error';
       case DioExceptionType.badResponse:
-        return '服务器异常，请稍后重试！';
+        return 'Server error, please try again later';
       case DioExceptionType.cancel:
-        return '请求已被取消，请重新请求';
+        return 'Request has been canceled';
       case DioExceptionType.connectionError:
-        return '连接错误，请检查网络设置';
+        return 'Network error, please check your network settings';
       case DioExceptionType.connectionTimeout:
-        return '网络连接超时，请检查网络设置';
+        return 'Connection timeout, please check your network settings';
       case DioExceptionType.receiveTimeout:
-        return '响应超时，请稍后重试！';
+        return 'Receive response timeout, please check your network settings';
       case DioExceptionType.sendTimeout:
-        return '发送请求超时，请检查网络设置';
+        return '';
+      case DioExceptionType.transformTimeout:
+        return 'Response processing timeout, please try again later';
       case DioExceptionType.unknown:
         final String res = await checkConnect();
-        return '$res 网络异常';
+        return '$res or unknown error';
     }
   }
 
   static Future<String> checkConnect() async {
-    final ConnectivityResult connectivityResult =
-        await Connectivity().checkConnectivity();
-    switch (connectivityResult) {
-      case ConnectivityResult.mobile:
-        return '正在使用移动流量';
-      case ConnectivityResult.wifi:
-        return '正在使用wifi';
-      case ConnectivityResult.ethernet:
-        return '正在使用局域网';
-      case ConnectivityResult.vpn:
-        return '正在使用代理网络';
-      case ConnectivityResult.other:
-        return '正在使用其他网络';
-      case ConnectivityResult.none:
-        return '未连接到任何网络';
-      default:
-        return '';
+    final connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult.contains(ConnectivityResult.mobile)) {
+      return 'Using mobile data';
     }
+    if (connectivityResult.contains(ConnectivityResult.wifi)) {
+      return 'Using Wi-Fi';
+    }
+    if (connectivityResult.contains(ConnectivityResult.ethernet)) {
+      return 'Using Ethernet';
+    }
+    if (connectivityResult.contains(ConnectivityResult.vpn)) {
+      return 'Using VPN';
+    }
+    if (connectivityResult.contains(ConnectivityResult.other)) {
+      return 'Using other network';
+    }
+    if (connectivityResult.contains(ConnectivityResult.none)) {
+      return 'No network connection';
+    }
+    return '';
   }
 }

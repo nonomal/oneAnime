@@ -1,4 +1,3 @@
-import 'dart:ffi';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -60,9 +59,11 @@ class LocalCacheKey {
 
 class SettingBoxKey {
   static const String HAenable = 'HAenable',
+      // 检查是否为第一次运行
+      firstRun = 'firstRun',
       searchEnhanceEnable = 'searchEnhanceEnable', 
-      // Todo 检查更新
       autoUpdate = 'autoUpdate',
+      alwaysOntop = 'alwaysOntop',
       danmakuEnhance = 'danmakuEnhance',
       danmakuBorder = 'danmakuBorder',
       danmakuOpacity = 'danmakuOpacity',
@@ -71,6 +72,8 @@ class SettingBoxKey {
       danmakuScroll = 'danmakuScroll',
       danmakuBottom = 'danmakuBottom',
       danmakuArea = 'danmakuArea',
+      danmakuDuration = 'danmakuDuration',
+      danmakuEnabledByDefault = 'danmakuEnabledByDefault',
       themeMode = 'themeMode',
       themeColor = 'themeColor',
       privateMode = 'privateMode',
@@ -78,5 +81,8 @@ class SettingBoxKey {
       playResume = 'playResume',
       oledEnhance = 'oledEnhance',
       displayMode = 'displayMode',
-      enableSystemProxy = 'enableSystemProxy';
+      /// deprecated
+      isWideScreen = 'isWideScreen',
+      enableSystemProxy = 'enableSystemProxy',
+      useSystemFont = 'useSystemFont';
 }
